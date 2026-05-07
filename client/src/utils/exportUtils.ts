@@ -411,6 +411,13 @@ function basePDF(title: string, studentName: string) {
   doc.setTextColor(15, 23, 42);
   doc.text(title, 14, 18);
 
+  // Embed DOPA logo on the top right
+  try {
+    doc.addImage('/dopa-logo.png', 'PNG', 165, 8, 31, 15);
+  } catch (e) {
+    console.error('Failed to add logo:', e);
+  }
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(100, 116, 139);
@@ -517,6 +524,13 @@ export function exportStudentsPDF(students: StudentRow[], batchName: string) {
   doc.setFontSize(16);
   doc.setTextColor(15, 23, 42);
   doc.text('Student List', 14, 18);
+
+  // Embed DOPA logo on top right (landscape)
+  try {
+    doc.addImage('/dopa-logo.png', 'PNG', 252, 8, 31, 15);
+  } catch (e) {
+    console.error('Failed to add logo:', e);
+  }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
@@ -646,6 +660,13 @@ export function exportReportCardPDF({ student, ceRecords, remarks = [] }: Report
   doc.setFontSize(18);
   doc.setTextColor(255, 255, 255);
   doc.text('DOPA ACADEMY', 14, 13);
+
+  // Embed DOPA logo on the top right of the dark banner
+  try {
+    doc.addImage('/dopa-logo.png', 'PNG', 165, 8, 31, 15);
+  } catch (e) {
+    console.error('Failed to add logo:', e);
+  }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
@@ -856,6 +877,13 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
   doc.setFontSize(14);
   doc.setTextColor(15, 23, 42);
   doc.text(`Batch Marks Report — ${batchName}`, 14, 18);
+
+  // Embed DOPA logo on the top right
+  try {
+    doc.addImage('/dopa-logo.png', 'PNG', 165, 8, 31, 15);
+  } catch (e) {
+    console.error('Failed to add logo:', e);
+  }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
