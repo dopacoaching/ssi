@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export default function StudentLogin() {
@@ -64,12 +64,6 @@ export default function StudentLogin() {
               {loading ? 'Entering...' : 'Log In'}
             </button>
           </form>
-        </div>
-
-        <div className="mt-8 text-center">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-            Staff? <Link to="/login" className="text-emerald-600 hover:underline ml-1">Admin Access</Link>
-          </p>
         </div>
       </div>
     </div>
