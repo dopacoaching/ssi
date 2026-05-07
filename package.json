@@ -1,0 +1,23 @@
+{
+  "name": "ssi",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd client && npm run dev",
+    "server": "cd server && npm run dev",
+    "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client && npm install && npm run build",
+    "build:server": "cd server && npm install && npx prisma generate",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "start": "cd server && node index.js",
+    "vercel-build": "npm install && cd server && npm install && npx prisma generate && cd ../client && npm install && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "puppeteer": "^24.42.0"
+  },
+  "dependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

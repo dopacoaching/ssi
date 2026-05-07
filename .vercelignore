@@ -1,0 +1,10 @@
+node_modules
+client/node_modules
+server/node_modules
+.env
+.git
+README.md
+DOCUMENTATION.md
+screenshots
+screenshot.js
+screenshot_tabs.js
