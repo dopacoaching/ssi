@@ -61,38 +61,45 @@ export default function AuditLogPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 mb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 mb-4 space-y-3">
+          {/* Row 1 — search + dropdowns */}
+          <div className="flex flex-wrap gap-3">
             <input
               type="text"
               placeholder="Search user or description…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className={`${inputCls} lg:col-span-2`}
+              className={`${inputCls} flex-1 min-w-52`}
             />
-            <select value={action} onChange={e => setAction(e.target.value)} className={inputCls}>
+            <select value={action} onChange={e => setAction(e.target.value)} className={`${inputCls} w-36`}>
               <option value="">All actions</option>
               {ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
-            <select value={entity} onChange={e => setEntity(e.target.value)} className={inputCls}>
+            <select value={entity} onChange={e => setEntity(e.target.value)} className={`${inputCls} w-44`}>
               <option value="">All entities</option>
               {ENTITIES.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
-            <div className="flex gap-2">
-              <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-                className={`${inputCls} flex-1`} title="From date" />
-              <input type="date" value={to} onChange={e => setTo(e.target.value)}
-                className={`${inputCls} flex-1`} title="To date" />
-            </div>
           </div>
-          {(search || action || entity || from || to) && (
-            <button
-              onClick={() => { setSearch(''); setAction(''); setEntity(''); setFrom(''); setTo(''); }}
-              className="mt-3 text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 font-medium"
-            >
-              Clear filters
-            </button>
-          )}
+
+          {/* Row 2 — date range */}
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">From date</label>
+              <input type="date" value={from} onChange={e => setFrom(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 dark:text-gray-500 mb-1">To date</label>
+              <input type="date" value={to} onChange={e => setTo(e.target.value)} className={inputCls} />
+            </div>
+            {(search || action || entity || from || to) && (
+              <button
+                onClick={() => { setSearch(''); setAction(''); setEntity(''); setFrom(''); setTo(''); }}
+                className="pb-0.5 text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 font-medium"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Table */}
