@@ -38,11 +38,9 @@ async function create(req, res) {
   const bcrypt = require('bcryptjs');
   const hashedPassword = password ? await bcrypt.hash(password, 12) : null;
 
-  const { photo } = req.body;
   const student = await studentModel.create({
     fullName, regNumber, batchId,
     password: hashedPassword,
-    ...(photo ? { photo } : {}),
   });
   logAudit(req, 'CREATE', 'Student', student.id, `Created student ${student.fullName} (${student.regNumber})`);
   return created(res, student);
@@ -54,11 +52,9 @@ async function updatePhoto(req, res) {
   if (req.user.role === 'TEACHER' && !req.user.batchIds.includes(student.batchId)) {
     return forbidden(res);
   }
-  const { photo } = req.body;
-  if (!photo || !photo.startsWith('data:image/')) return badRequest(res, 'Invalid image data');
-  if (Buffer.byteLength(photo, 'utf8') > 400_000) return badRequest(res, 'Image too large (max ~300 KB)');
+  if (!req.file) return badRequest(res, 'No image file provided');
 
-  const updated = await studentModel.update(req.params.id, { photo });
+  const updated = await studentModel.update(req.params.id, { photo: req.file.path });
   logAudit(req, 'UPDATE', 'Student', student.id, `Updated photo for ${student.fullName} (${student.regNumber})`);
   return ok(res, updated);
 }

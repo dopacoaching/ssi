@@ -4,7 +4,6 @@ import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { RootState } from '../store';
 import { useStudents, Student } from '../hooks/useStudents';
-import { resizeImage } from '../utils/resizeImage';
 import { useCE, CERecord } from '../hooks/useCE';
 import { useTests, WeeklyTest, MonthlyTest } from '../hooks/useTests';
 import { useRemarks } from '../hooks/useRemarks';
@@ -231,8 +230,7 @@ export default function StudentDetail() {
     if (!file || !id) return;
     setPhotoUploading(true);
     try {
-      const resized = await resizeImage(file);
-      await updatePhoto(id, resized);
+      await updatePhoto(id, file);
       const refreshed = await fetchOne(id);
       setStudent(refreshed);
       toast.success('Photo updated');

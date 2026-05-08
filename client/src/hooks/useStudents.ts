@@ -55,8 +55,10 @@ export function useStudents() {
     return data.data as Student;
   }, []);
 
-  const updatePhoto = useCallback(async (id: string, photo: string) => {
-    const { data } = await api.patch(`/students/${id}/photo`, { photo });
+  const updatePhoto = useCallback(async (id: string, file: File) => {
+    const form = new FormData();
+    form.append('photo', file);
+    const { data } = await api.patch(`/students/${id}/photo`, form);
     return data.data as Student;
   }, []);
 

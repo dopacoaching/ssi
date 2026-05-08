@@ -10,7 +10,6 @@ import Layout from '../components/Layout';
 import EmptyState from '../components/EmptyState';
 import api from '../utils/api';
 import { exportBatchExcel, exportBatchPDF, BatchReportStudent, exportStudentsExcel, exportStudentsPDF } from '../utils/exportUtils';
-import { resizeImage } from '../utils/resizeImage';
 
 const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const inputCls = 'border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400';
@@ -21,11 +20,12 @@ export default function Students() {
   const selectedBatch = params.get('batch') || '';
 
   const { batches, fetch: fetchBatches } = useBatches();
-  const { students, loading, fetchByBatch, create, fetchBatchReport } = useStudents();
+  const { students, loading, fetchByBatch, create, updatePhoto, fetchBatchReport } = useStudents();
   const { teachers, fetchTeachers } = useAdmin();
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ fullName: '', regNumber: '', password: '' });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState('');
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -260,15 +260,11 @@ export default function Students() {
     else exportStudentsPDF(rows as any[], batchName);
   }
 
-  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    try {
-      const resized = await resizeImage(file);
-      setPhotoPreview(resized);
-    } catch {
-      toast.error('Failed to process image');
-    }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
     e.target.value = '';
   }
 
@@ -277,8 +273,12 @@ export default function Students() {
     if (!selectedBatch) return;
     setSaving(true);
     try {
-      await create({ ...form, batchId: selectedBatch, ...(photoPreview ? { photo: photoPreview } : {}) });
+      const student = await create({ ...form, batchId: selectedBatch });
+      if (photoFile) {
+        await updatePhoto(student.id, photoFile).catch(() => {});
+      }
       setForm({ fullName: '', regNumber: '', password: '' });
+      setPhotoFile(null);
       setPhotoPreview('');
       setShowForm(false);
       fetchByBatch(selectedBatch).catch(() => {});
@@ -504,7 +504,7 @@ export default function Students() {
                     <input type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
                   </label>
                   {photoPreview && (
-                    <button type="button" onClick={() => setPhotoPreview('')} className="text-xs px-3 py-2 text-red-400 hover:text-red-600 dark:hover:text-red-400 font-medium">Remove</button>
+                    <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(''); }} className="text-xs px-3 py-2 text-red-400 hover:text-red-600 dark:hover:text-red-400 font-medium">Remove</button>
                   )}
                 </div>
               </div>
@@ -528,7 +528,7 @@ export default function Students() {
               <button type="submit" disabled={saving} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
                 {saving ? 'Saving…' : 'Save'}
               </button>
-              <button type="button" onClick={() => { setShowForm(false); setPhotoPreview(''); }} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-3 py-2.5">Cancel</button>
+              <button type="button" onClick={() => { setShowForm(false); setPhotoFile(null); setPhotoPreview(''); }} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-3 py-2.5">Cancel</button>
             </div>
           </form>
         )}

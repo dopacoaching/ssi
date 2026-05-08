@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
@@ -7,9 +7,13 @@ import { useCE } from '../hooks/useCE';
 import { useTests, WeeklyTest, MonthlyTest } from '../hooks/useTests';
 import { useRemarks } from '../hooks/useRemarks';
 import { useAuth } from '../hooks/useAuth';
+import {
+  ResponsiveContainer, LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend,
+} from 'recharts';
 
 const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-type Tab = 'overview' | 'results' | 'feedback';
+type Tab = 'overview' | 'results' | 'analytics' | 'feedback';
 
 export default function StudentPortal() {
   const { id } = useParams<{ id: string }>();
@@ -37,6 +41,47 @@ export default function StudentPortal() {
     ]).finally(() => setLoading(false));
   }, [id, fetchOne, fetchCE, fetchAll, fetchRemarks]);
 
+  // --- analytics computed data (hooks must be called before any early return) ---
+  const sortedRecords = useMemo(() =>
+    [...records].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month),
+  [records]);
+
+  const ceTrendData = useMemo(() =>
+    sortedRecords.map(r => ({
+      name: `${MONTHS[r.month]} ${r.year}`,
+      CE: Number(r.totalCE.toFixed(1)),
+      Attendance: Number(r.attendancePct.toFixed(1)),
+    })),
+  [sortedRecords]);
+
+  const subjectAvgData = useMemo(() => {
+    const map: Record<string, { total: number; max: number; count: number }> = {};
+    weekly.forEach(t => {
+      if (!map[t.subject]) map[t.subject] = { total: 0, max: 0, count: 0 };
+      map[t.subject].total += t.marks;
+      map[t.subject].max   += t.maxMarks;
+      map[t.subject].count += 1;
+    });
+    return Object.entries(map)
+      .map(([subject, v]) => ({ subject, pct: v.max > 0 ? Number(((v.total / v.max) * 100).toFixed(1)) : 0 }))
+      .sort((a, b) => b.pct - a.pct);
+  }, [weekly]);
+
+  const monthlyChartData = useMemo(() =>
+    [...monthly]
+      .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
+      .map(t => ({
+        name: `${t.subject} ${MONTHS[t.month]}`,
+        pct: t.maxMarks > 0 ? Number(((t.marks / t.maxMarks) * 100).toFixed(1)) : 0,
+        marks: `${t.marks}/${t.maxMarks}`,
+      })),
+  [monthly]);
+
+  const latestCE    = sortedRecords.length > 0 ? sortedRecords[sortedRecords.length - 1].totalCE : null;
+  const avgAtt      = sortedRecords.length > 0 ? sortedRecords.reduce((s, r) => s + r.attendancePct, 0) / sortedRecords.length : null;
+  const totalTests  = weekly.length + monthly.length;
+  const bestSubject = subjectAvgData[0]?.subject ?? null;
+
   if (loading) {
     return <div className="min-h-screen bg-white flex items-center justify-center text-emerald-600 font-bold">Loading...</div>;
   }
@@ -48,6 +93,7 @@ export default function StudentPortal() {
   const formatType = (type: string) => type === 'Theory' ? 'Theory' : 'MCQ';
 
   const getPerformanceStatus = (marks: number, max: number) => {
+    if (max === 0) return { label: 'No Data', color: 'text-slate-400' };
     const pct = (marks / max) * 100;
     if (pct >= 80) return { label: 'Excellent', color: 'text-emerald-600' };
     if (pct >= 60) return { label: 'Good', color: 'text-blue-600' };
@@ -90,17 +136,17 @@ export default function StudentPortal() {
 
         {/* Clean Tabs */}
         <div className="flex gap-8 border-b border-slate-200 mb-10 overflow-x-auto pb-px">
-          {(['overview', 'results', 'feedback'] as Tab[]).map((t) => (
+          {(['overview', 'results', 'analytics', 'feedback'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`pb-4 text-xs font-bold uppercase tracking-widest transition-all relative ${
-                tab === t 
-                  ? 'text-emerald-600' 
+              className={`pb-4 text-xs font-bold uppercase tracking-widest transition-all relative whitespace-nowrap ${
+                tab === t
+                  ? 'text-emerald-600'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              {t === 'overview' ? 'Profile' : t === 'results' ? 'Exam Results' : 'Teacher Notes'}
+              {t === 'overview' ? 'Profile' : t === 'results' ? 'Exam Results' : t === 'analytics' ? 'Analytics' : 'Teacher Notes'}
               {tab === t && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-600"></div>}
             </button>
           ))}
@@ -226,6 +272,86 @@ export default function StudentPortal() {
                    {monthly.length === 0 && <p className="col-span-full py-10 text-center text-sm text-slate-400 bg-white rounded-2xl border border-slate-200">No monthly exams recorded.</p>}
                  </div>
                </section>
+            </div>
+          )}
+
+          {tab === 'analytics' && (
+            <div className="space-y-6">
+
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: 'Latest CE Score', value: latestCE !== null ? `${latestCE.toFixed(1)} / 20` : '—', color: latestCE !== null && latestCE >= 15 ? 'text-emerald-600' : latestCE !== null && latestCE >= 10 ? 'text-amber-500' : 'text-rose-500' },
+                  { label: 'Avg Attendance', value: avgAtt !== null ? `${avgAtt.toFixed(1)}%` : '—', color: avgAtt !== null && avgAtt >= 90 ? 'text-emerald-600' : avgAtt !== null && avgAtt >= 75 ? 'text-amber-500' : 'text-rose-500' },
+                  { label: 'Tests Completed', value: totalTests, color: 'text-slate-700' },
+                  { label: 'Best Subject', value: bestSubject ?? '—', color: 'text-emerald-600' },
+                ].map(c => (
+                  <div key={c.label} className="bg-white p-5 rounded-2xl border border-slate-200">
+                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-2">{c.label}</p>
+                    <p className={`text-xl font-bold ${c.color} leading-tight`}>{c.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* CE & Attendance trend */}
+              {ceTrendData.length > 0 ? (
+                <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5">CE Score &amp; Attendance Over Time</h3>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={ceTrendData} margin={{ top: 4, right: 16, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                      <YAxis yAxisId="ce"  domain={[0, 20]}  tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                      <YAxis yAxisId="att" domain={[0, 100]} orientation="right" tick={{ fontSize: 11, fill: '#94a3b8' }} unit="%" />
+                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <ReferenceLine yAxisId="ce" y={10} stroke="#f87171" strokeDasharray="4 2" strokeOpacity={0.6} />
+                      <Line yAxisId="ce"  type="monotone" dataKey="CE"         stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: '#10b981' }} name="CE (/20)" />
+                      <Line yAxisId="att" type="monotone" dataKey="Attendance" stroke="#6366f1" strokeWidth={2}   dot={{ r: 3, fill: '#6366f1' }} name="Attendance %" strokeDasharray="5 3" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-sm text-slate-400">No CE records available yet.</div>
+              )}
+
+              {/* Subject-wise performance */}
+              {subjectAvgData.length > 0 && (
+                <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5">Subject-wise Average Score</h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={subjectAvgData} margin={{ top: 4, right: 16, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                      <XAxis dataKey="subject" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} unit="%" />
+                      <Tooltip formatter={(v) => typeof v === 'number' ? `${v}%` : v} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                      <ReferenceLine y={60} stroke="#f59e0b" strokeDasharray="4 2" strokeOpacity={0.6} />
+                      <Bar dataKey="pct" fill="#10b981" radius={[4, 4, 0, 0]} name="Avg %" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Monthly exam performance */}
+              {monthlyChartData.length > 0 && (
+                <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5">Monthly Exam Performance</h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={monthlyChartData} margin={{ top: 4, right: 16, left: -10, bottom: 4 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} interval={0} angle={-20} textAnchor="end" height={40} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} unit="%" />
+                      <Tooltip
+                        formatter={(_v, _n, props) => [`${props.payload.marks} (${props.payload.pct}%)`, 'Score']}
+                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                      />
+                      <ReferenceLine y={60} stroke="#f59e0b" strokeDasharray="4 2" strokeOpacity={0.6} />
+                      <Bar dataKey="pct" fill="#6366f1" radius={[4, 4, 0, 0]} name="Score %" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
             </div>
           )}
 
