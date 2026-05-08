@@ -10,6 +10,9 @@ const {
   forbidden,
   notFound,
 } = require("../views/response");
+const { logAudit } = require("../utils/audit");
+
+const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 async function isLocked(studentId, month, year, userRole) {
   if (userRole !== "TEACHER") return false;
@@ -157,7 +160,8 @@ async function listWeekly(req, res) {
 }
 
 async function addWeekly(req, res) {
-  if (!(await guardStudent(req, res))) return;
+  const student = await guardStudent(req, res);
+  if (!student) return;
   const { weekDate, testType, subject, chapter, marks, maxMarks } = req.body;
   if (!weekDate || !subject || marks == null || !maxMarks)
     return badRequest(res, "Missing fields");
@@ -204,6 +208,8 @@ async function addWeekly(req, res) {
   });
 
   await syncCEForMonth(req.params.id, d.getMonth() + 1, d.getFullYear());
+  logAudit(req, 'CREATE', 'WeeklyTest', test.id,
+    `Added ${test.testType} ${test.subject} — ${student.fullName} (${student.regNumber}) — ${test.marks}/${test.maxMarks} on ${weekDate}`);
 
   return created(res, test);
 }
@@ -215,7 +221,8 @@ async function listMonthly(req, res) {
 }
 
 async function addMonthly(req, res) {
-  if (!(await guardStudent(req, res))) return;
+  const student = await guardStudent(req, res);
+  if (!student) return;
   const { month, year, testType, subject, marks, maxMarks } = req.body;
   if (!month || !year || !subject || marks == null || !maxMarks)
     return badRequest(res, "Missing fields");
@@ -261,6 +268,8 @@ async function addMonthly(req, res) {
   });
 
   await syncCEForMonth(req.params.id, m, y);
+  logAudit(req, 'CREATE', 'MonthlyTest', test.id,
+    `Added ${test.testType} ${test.subject} — ${student.fullName} (${student.regNumber}) — ${test.marks}/${test.maxMarks} (${MONTHS[m]} ${y})`);
 
   return created(res, test);
 }
@@ -406,6 +415,12 @@ async function bulkAdd(req, res) {
     }),
   );
 
+  if (createdCount > 0) {
+    const period = isWeekly ? weekDate : `${MONTHS[Number(month)]} ${year}`;
+    logAudit(req, 'CREATE', isWeekly ? 'WeeklyTest' : 'MonthlyTest', batchId,
+      `Bulk added ${createdCount} ${testType || 'Theory'} ${subject} tests for batch (${period})${skippedCount ? `, ${skippedCount} skipped` : ''}`);
+  }
+
   return ok(
     res,
     { created: createdCount, skipped: skippedCount },
@@ -450,6 +465,8 @@ async function updateWeekly(req, res) {
   const updated = await testModel.updateWeekly(testId, updateData);
 
   await syncCEForMonth(test.studentId, d.getMonth() + 1, d.getFullYear());
+  logAudit(req, 'UPDATE', 'WeeklyTest', testId,
+    `Updated ${test.testType} ${test.subject} — ${student.fullName} (${student.regNumber}) — ${updated.marks}/${updated.maxMarks} on ${test.weekDate.toISOString().split('T')[0]}`);
 
   return ok(res, updated);
 }
@@ -485,6 +502,8 @@ async function deleteWeekly(req, res) {
   await testModel.deleteWeekly(testId);
 
   await syncCEForMonth(test.studentId, d.getMonth() + 1, d.getFullYear());
+  logAudit(req, 'DELETE', 'WeeklyTest', testId,
+    `Deleted ${test.testType} ${test.subject} — ${student.fullName} (${student.regNumber}) — ${test.marks}/${test.maxMarks} on ${d.toISOString().split('T')[0]}`);
 
   return ok(res, null, "Weekly test deleted");
 }
@@ -517,6 +536,8 @@ async function updateMonthly(req, res) {
   const updated = await testModel.updateMonthly(testId, updateData);
 
   await syncCEForMonth(test.studentId, test.month, test.year);
+  logAudit(req, 'UPDATE', 'MonthlyTest', testId,
+    `Updated ${test.testType} ${test.subject} — ${student.fullName} (${student.regNumber}) — ${updated.marks}/${updated.maxMarks} (${MONTHS[test.month]} ${test.year})`);
 
   return ok(res, updated);
 }
@@ -544,6 +565,8 @@ async function deleteMonthly(req, res) {
   await testModel.deleteMonthly(testId);
 
   await syncCEForMonth(test.studentId, test.month, test.year);
+  logAudit(req, 'DELETE', 'MonthlyTest', testId,
+    `Deleted ${test.testType} ${test.subject} — ${student.fullName} (${student.regNumber}) — ${test.marks}/${test.maxMarks} (${MONTHS[test.month]} ${test.year})`);
 
   return ok(res, null, "Monthly test deleted");
 }

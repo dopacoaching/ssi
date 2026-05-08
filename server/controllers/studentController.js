@@ -1,4 +1,5 @@
 const studentModel = require('../models/studentModel');
+const { logAudit } = require('../utils/audit');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
 
 async function listByBatch(req, res) {
@@ -37,10 +38,11 @@ async function create(req, res) {
   const bcrypt = require('bcryptjs');
   const hashedPassword = password ? await bcrypt.hash(password, 12) : null;
 
-  const student = await studentModel.create({ 
+  const student = await studentModel.create({
     fullName, regNumber, batchId,
     password: hashedPassword
   });
+  logAudit(req, 'CREATE', 'Student', student.id, `Created student ${student.fullName} (${student.regNumber})`);
   return created(res, student);
 }
 
@@ -70,6 +72,7 @@ async function update(req, res) {
   }
 
   const updated = await studentModel.update(req.params.id, updateData);
+  logAudit(req, 'UPDATE', 'Student', updated.id, `Updated student ${updated.fullName} (${updated.regNumber})`);
   return ok(res, updated);
 }
 
@@ -80,6 +83,7 @@ async function remove(req, res) {
     return forbidden(res);
   }
   await studentModel.softDelete(req.params.id);
+  logAudit(req, 'DELETE', 'Student', student.id, `Deactivated student ${student.fullName} (${student.regNumber})`);
   return ok(res, null, 'Student deactivated');
 }
 

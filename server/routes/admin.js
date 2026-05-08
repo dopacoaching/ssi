@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { verifyToken, requireRole } = require('../middleware/auth');
 const ctrl = require('../controllers/adminController');
+const auditCtrl = require('../controllers/auditController');
 const asyncHandler = require('../middleware/asyncHandler');
 
 const admin = [verifyToken, requireRole('ADMIN')];
@@ -20,5 +21,7 @@ router.get('/alerts',                verifyToken, requireRole('ADMIN', 'TEACHER'
 router.get('/batches/:id/approvals',  verifyToken, asyncHandler(ctrl.listBatchApprovals));
 router.post('/batches/:id/approvals', ...admin, asyncHandler(ctrl.toggleBatchApproval));
 router.post('/batches/transfer',          ...admin, asyncHandler(ctrl.transferStudents));
+
+router.get('/audit', ...admin, asyncHandler(auditCtrl.list));
 
 module.exports = router;

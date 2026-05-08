@@ -3,7 +3,10 @@ const studentModel = require('../models/studentModel');
 const testModel = require('../models/testModel');
 const prisma = require('../utils/prisma');
 const { computeCE } = require('../utils/ceScoring');
+const { logAudit } = require('../utils/audit');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
+
+const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 async function isBatchLocked(studentId, month, year) {
   const student = await studentModel.findById(studentId);
@@ -101,7 +104,8 @@ async function list(req, res) {
 }
 
 async function upsert(req, res) {
-  if (!await guardStudent(req, res)) return;
+  const student = await guardStudent(req, res);
+  if (!student) return;
 
   const { month, year, attendancePct, hasMedCert = false, notesStatus } = req.body;
 
@@ -145,9 +149,13 @@ async function upsert(req, res) {
   const existing = await ceModel.findOne(req.params.id, m, y);
   if (existing) {
     const updated = await ceModel.update(existing.id, payload);
+    logAudit(req, 'UPDATE', 'CERecord', updated.id,
+      `Updated CE record ${MONTHS[m]} ${y} — ${student.fullName} (${student.regNumber}) — CE: ${scores.totalCE.toFixed(1)}/20`);
     return ok(res, updated, 'CE record updated');
   }
   const record = await ceModel.create({ studentId: req.params.id, ...payload });
+  logAudit(req, 'CREATE', 'CERecord', record.id,
+    `Created CE record ${MONTHS[m]} ${y} — ${student.fullName} (${student.regNumber}) — CE: ${scores.totalCE.toFixed(1)}/20`);
   return created(res, record, 'CE record created');
 }
 
@@ -173,6 +181,8 @@ async function remove(req, res) {
   }
 
   await ceModel.remove(ceId);
+  logAudit(req, 'DELETE', 'CERecord', ceId,
+    `Deleted CE record ${MONTHS[existing.month]} ${existing.year} — ${student.fullName} (${student.regNumber})`);
   return ok(res, null, 'CE record deleted');
 }
 

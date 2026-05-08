@@ -3,7 +3,10 @@ const batchModel = require('../models/batchModel');
 const userModel = require('../models/userModel');
 const studentModel = require('../models/studentModel');
 const prisma = require('../utils/prisma');
+const { logAudit } = require('../utils/audit');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
+
+const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // Batches
 async function listBatches(req, res) {
@@ -15,6 +18,7 @@ async function createBatch(req, res) {
   const { name, year } = req.body;
   if (!name || !year) return badRequest(res, 'Name and year required');
   const batch = await batchModel.create({ name, year: Number(year) });
+  logAudit(req, 'CREATE', 'Batch', batch.id, `Created batch "${batch.name}" (${batch.year})`);
   return created(res, batch);
 }
 
@@ -23,6 +27,7 @@ async function updateBatch(req, res) {
   if (!batch) return notFound(res, 'Batch not found');
   const { name, year } = req.body;
   const updated = await batchModel.update(req.params.id, { name, year: year ? Number(year) : undefined });
+  logAudit(req, 'UPDATE', 'Batch', updated.id, `Updated batch "${updated.name}"`);
   return ok(res, updated);
 }
 
@@ -40,6 +45,7 @@ async function createTeacher(req, res) {
   if (exists) return badRequest(res, 'Username/Email already registered');
   const hashed = await bcrypt.hash(password, 12);
   const teacher = await userModel.create({ email, password: hashed, name, role: 'TEACHER', batchIds });
+  logAudit(req, 'CREATE', 'Teacher', teacher.id, `Created teacher "${teacher.name}" (${teacher.email})`);
   return created(res, { id: teacher.id, email: teacher.email, name: teacher.name, batchIds: teacher.batchIds });
 }
 
@@ -54,6 +60,13 @@ async function updateTeacher(req, res) {
   if (isActive  !== undefined) data.isActive  = isActive;
   if (password)                data.password  = await bcrypt.hash(password, 12);
   const updated = await userModel.update(req.params.id, data);
+  const changes = [];
+  if (name      !== undefined) changes.push(`name → "${name}"`);
+  if (batchIds  !== undefined) changes.push('batches updated');
+  if (isActive  !== undefined) changes.push(isActive ? 'reactivated' : 'deactivated');
+  if (password)                changes.push('password reset');
+  logAudit(req, 'UPDATE', 'Teacher', existing.id,
+    `Updated teacher "${existing.name}": ${changes.join(', ') || 'no changes'}`);
   return ok(res, { id: updated.id, email: updated.email, name: updated.name, batchIds: updated.batchIds, isActive: updated.isActive });
 }
 
@@ -147,17 +160,24 @@ async function toggleBatchApproval(req, res) {
   const m = Number(month);
   const y = Number(year);
 
+  const batchInfo = await batchModel.findById(id);
+  const batchName = batchInfo?.name || id;
+
   if (isApproved) {
     const approval = await prisma.batchApproval.upsert({
       where: { batchId_month_year: { batchId: id, month: m, year: y } },
       create: { batchId: id, month: m, year: y },
       update: {}
     });
+    logAudit(req, 'CREATE', 'BatchApproval', id,
+      `Locked batch "${batchName}" for ${MONTHS[m]} ${y}`);
     return ok(res, approval, 'Batch approved and locked');
   } else {
     await prisma.batchApproval.deleteMany({
       where: { batchId: id, month: m, year: y }
     });
+    logAudit(req, 'DELETE', 'BatchApproval', id,
+      `Unlocked batch "${batchName}" for ${MONTHS[m]} ${y}`);
     return ok(res, null, 'Batch unlocked');
   }
 }
@@ -183,6 +203,7 @@ async function transferStudents(req, res) {
     data: { batchId: targetBatchId }
   });
 
+  logAudit(req, 'UPDATE', 'Student', '', `Transferred ${studentIds.length} student(s) to batch "${targetBatch.name}"`);
   return ok(res, null, `${studentIds.length} students transferred successfully`);
 }
 

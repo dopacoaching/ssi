@@ -1,5 +1,6 @@
 const remarkModel = require('../models/remarkModel');
 const studentModel = require('../models/studentModel');
+const { logAudit } = require('../utils/audit');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
 
 
@@ -24,7 +25,8 @@ async function list(req, res) {
 }
 
 async function add(req, res) {
-  if (!await guardStudent(req, res)) return;
+  const student = await guardStudent(req, res);
+  if (!student) return;
   const { category, text, isFlagged = false } = req.body;
   if (!category || !text) return badRequest(res, 'Category and text required');
   const remark = await remarkModel.create({
@@ -32,15 +34,20 @@ async function add(req, res) {
     teacherId: req.user.id,
     category, text, isFlagged,
   });
+  logAudit(req, 'CREATE', 'Remark', remark.id,
+    `Added "${category}" remark for ${student.fullName} (${student.regNumber})`);
   return created(res, remark);
 }
 
 async function flag(req, res) {
-  if (!await guardStudent(req, res)) return;
+  const student = await guardStudent(req, res);
+  if (!student) return;
   const { remarkId } = req.params;
   const existing = await remarkModel.findById(remarkId);
   if (!existing) return notFound(res, 'Remark not found');
   const remark = await remarkModel.update(remarkId, { isFlagged: !existing.isFlagged });
+  logAudit(req, 'UPDATE', 'Remark', remarkId,
+    `${remark.isFlagged ? 'Flagged' : 'Unflagged'} remark for ${student.fullName} (${student.regNumber})`);
   return ok(res, remark);
 }
 

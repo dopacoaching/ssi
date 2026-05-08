@@ -14,6 +14,7 @@ const Batches       = lazy(() => import('../pages/admin/Batches'));
 const Teachers      = lazy(() => import('../pages/admin/Teachers'));
 const BatchTestEntry  = lazy(() => import('../pages/BatchTestEntry'));
 const BatchAnalytics  = lazy(() => import('../pages/admin/BatchAnalytics'));
+const AuditLog        = lazy(() => import('../pages/admin/AuditLog'));
 
 const PageFallback = (
   <div className="flex h-screen items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 text-sm">
@@ -51,6 +52,10 @@ const router = createBrowserRouter([
   {
     path: '/analytics',
     element: <ProtectedRoute role={['ADMIN', 'TEACHER'] as any}><BatchAnalytics /></ProtectedRoute>,
+  },
+  {
+    path: '/admin/audit',
+    element: <ProtectedRoute role="ADMIN"><AuditLog /></ProtectedRoute>,
   },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
