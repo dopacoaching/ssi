@@ -56,6 +56,7 @@ model Student {
   fullName       String
   regNumber      String   @unique
   password       String?
+  photo          String?
   batchId        String        @db.ObjectId
   batch          Batch         @relation(fields: [batchId], references: [id])
   role           Role          @default(STUDENT)

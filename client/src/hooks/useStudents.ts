@@ -6,6 +6,7 @@ export interface Student {
   fullName: string;
   regNumber: string;
   password?: string;
+  photo?: string;
   batchId: string;
   batch?: { id: string; name: string };
   isActive: boolean;
@@ -45,12 +46,17 @@ export function useStudents() {
     return data.data as Student;
   }, []);
 
-  const update = useCallback(async (id: string, payload: { 
-    fullName?: string; 
+  const update = useCallback(async (id: string, payload: {
+    fullName?: string;
     regNumber?: string;
     password?: string;
   }) => {
     const { data } = await api.patch(`/students/${id}`, payload);
+    return data.data as Student;
+  }, []);
+
+  const updatePhoto = useCallback(async (id: string, photo: string) => {
+    const { data } = await api.patch(`/students/${id}/photo`, { photo });
     return data.data as Student;
   }, []);
 
@@ -69,5 +75,5 @@ export function useStudents() {
     return data.data as Student[];
   }, []);
 
-  return { students, loading, error, fetchByBatch, fetchOne, create, update, remove, fetchBatchReport, search };
+  return { students, loading, error, fetchByBatch, fetchOne, create, update, updatePhoto, remove, fetchBatchReport, search };
 }

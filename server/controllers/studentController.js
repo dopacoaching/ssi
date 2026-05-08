@@ -38,12 +38,29 @@ async function create(req, res) {
   const bcrypt = require('bcryptjs');
   const hashedPassword = password ? await bcrypt.hash(password, 12) : null;
 
+  const { photo } = req.body;
   const student = await studentModel.create({
     fullName, regNumber, batchId,
-    password: hashedPassword
+    password: hashedPassword,
+    ...(photo ? { photo } : {}),
   });
   logAudit(req, 'CREATE', 'Student', student.id, `Created student ${student.fullName} (${student.regNumber})`);
   return created(res, student);
+}
+
+async function updatePhoto(req, res) {
+  const student = await studentModel.findById(req.params.id);
+  if (!student || !student.isActive) return notFound(res, 'Student not found');
+  if (req.user.role === 'TEACHER' && !req.user.batchIds.includes(student.batchId)) {
+    return forbidden(res);
+  }
+  const { photo } = req.body;
+  if (!photo || !photo.startsWith('data:image/')) return badRequest(res, 'Invalid image data');
+  if (Buffer.byteLength(photo, 'utf8') > 400_000) return badRequest(res, 'Image too large (max ~300 KB)');
+
+  const updated = await studentModel.update(req.params.id, { photo });
+  logAudit(req, 'UPDATE', 'Student', student.id, `Updated photo for ${student.fullName} (${student.regNumber})`);
+  return ok(res, updated);
 }
 
 async function update(req, res) {
@@ -104,4 +121,4 @@ async function search(req, res) {
   return ok(res, results);
 }
 
-module.exports = { listByBatch, getOne, create, update, remove, batchReport, search };
+module.exports = { listByBatch, getOne, create, update, updatePhoto, remove, batchReport, search };

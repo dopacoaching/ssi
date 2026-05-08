@@ -10,6 +10,7 @@ import Layout from '../components/Layout';
 import EmptyState from '../components/EmptyState';
 import api from '../utils/api';
 import { exportBatchExcel, exportBatchPDF, BatchReportStudent, exportStudentsExcel, exportStudentsPDF } from '../utils/exportUtils';
+import { resizeImage } from '../utils/resizeImage';
 
 const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const inputCls = 'border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400';
@@ -24,9 +25,8 @@ export default function Students() {
   const { teachers, fetchTeachers } = useAdmin();
 
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ 
-    fullName: '', regNumber: '', password: '' 
-  });
+  const [form, setForm] = useState({ fullName: '', regNumber: '', password: '' });
+  const [photoPreview, setPhotoPreview] = useState('');
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportMonth, setExportMonth] = useState<string>('');
@@ -260,15 +260,26 @@ export default function Students() {
     else exportStudentsPDF(rows as any[], batchName);
   }
 
+  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const resized = await resizeImage(file);
+      setPhotoPreview(resized);
+    } catch {
+      toast.error('Failed to process image');
+    }
+    e.target.value = '';
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedBatch) return;
     setSaving(true);
     try {
-      await create({ ...form, batchId: selectedBatch });
-      setForm({ 
-        fullName: '', regNumber: '', password: '' 
-      });
+      await create({ ...form, batchId: selectedBatch, ...(photoPreview ? { photo: photoPreview } : {}) });
+      setForm({ fullName: '', regNumber: '', password: '' });
+      setPhotoPreview('');
       setShowForm(false);
       fetchByBatch(selectedBatch).catch(() => {});
       toast.success('Student added');
@@ -474,8 +485,31 @@ export default function Students() {
         )}
 
         {showForm && user?.role === 'TEACHER' && (
-          <form onSubmit={handleCreate} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 mb-4 space-y-3">
+          <form onSubmit={handleCreate} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 mb-4 space-y-4">
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">New Student</p>
+
+            {/* Photo upload */}
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                {photoPreview
+                  ? <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
+                  : <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                }
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">Photo <span className="text-gray-400">(optional)</span></label>
+                <div className="flex gap-2">
+                  <label className="cursor-pointer text-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-colors">
+                    {photoPreview ? 'Change' : 'Upload'}
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+                  </label>
+                  {photoPreview && (
+                    <button type="button" onClick={() => setPhotoPreview('')} className="text-xs px-3 py-2 text-red-400 hover:text-red-600 dark:hover:text-red-400 font-medium">Remove</button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1.5 font-medium">Full Name</label>
@@ -494,7 +528,7 @@ export default function Students() {
               <button type="submit" disabled={saving} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
                 {saving ? 'Saving…' : 'Save'}
               </button>
-              <button type="button" onClick={() => setShowForm(false)} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-3 py-2.5">Cancel</button>
+              <button type="button" onClick={() => { setShowForm(false); setPhotoPreview(''); }} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-3 py-2.5">Cancel</button>
             </div>
           </form>
         )}

@@ -11,6 +11,7 @@ router.post('/students',                 verifyToken, requireRole('TEACHER'), as
 router.get('/students/search',           verifyToken, asyncHandler(ctrl.search));
 router.get('/students/:id',              verifyToken, asyncHandler(ctrl.getOne));
 router.patch('/students/:id',            verifyToken, requireRole('TEACHER'), asyncHandler(ctrl.update));
+router.patch('/students/:id/photo',      verifyToken, requireRole('ADMIN', 'TEACHER'), asyncHandler(ctrl.updatePhoto));
 router.delete('/students/:id',           verifyToken, requireRole('TEACHER'), asyncHandler(ctrl.remove));
 
 module.exports = router;

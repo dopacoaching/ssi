@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { RootState } from '../store';
 import { useStudents, Student } from '../hooks/useStudents';
+import { resizeImage } from '../utils/resizeImage';
 import { useCE, CERecord } from '../hooks/useCE';
 import { useTests, WeeklyTest, MonthlyTest } from '../hooks/useTests';
 import { useRemarks } from '../hooks/useRemarks';
@@ -37,7 +38,7 @@ export default function StudentDetail() {
   const user = useSelector((s: RootState) => s.auth.user);
   const isTeacher = user?.role === 'TEACHER';
   const isStaff   = user?.role === 'ADMIN' || user?.role === 'TEACHER';
-  const { fetchOne, update, remove } = useStudents();
+  const { fetchOne, update, updatePhoto, remove } = useStudents();
   const { records, loading: ceLoading, fetch: fetchCE, remove: deleteCE }                       = useCE(id!);
   const { weekly, monthly, loading: testLoading, fetchAll, addWeekly, addMonthly, updateWeekly, deleteWeekly, updateMonthly, deleteMonthly }     = useTests(id!);
   const { remarks, loading: remarkLoading, fetch: fetchRemarks, add: addRemark, flag } = useRemarks(id!);
@@ -55,6 +56,7 @@ export default function StudentDetail() {
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [deactivating, setDeactivating]           = useState(false);
+  const [photoUploading, setPhotoUploading]       = useState(false);
 
   const [showWForm, setShowWForm] = useState(false);
   const [wForm, setWForm] = useState({ weekDate: '', testType: 'Theory', subject: 'Physics', chapter: '', marks: '', maxMarks: '100' });
@@ -224,6 +226,24 @@ export default function StudentDetail() {
     }
   }
 
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    setPhotoUploading(true);
+    try {
+      const resized = await resizeImage(file);
+      await updatePhoto(id, resized);
+      const refreshed = await fetchOne(id);
+      setStudent(refreshed);
+      toast.success('Photo updated');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update photo');
+    } finally {
+      setPhotoUploading(false);
+      e.target.value = '';
+    }
+  }
+
   async function handleAddWeekly(e: React.FormEvent) {
     e.preventDefault(); setWSaving(true);
     try {
@@ -375,39 +395,65 @@ export default function StudentDetail() {
                 </div>
               </form>
             ) : (
-              <div className="flex items-start justify-between flex-wrap gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                    {student.fullName}
-                    {user?.role === 'ADMIN' && records.length > 0 && (
-                      <span className={`text-sm px-2.5 py-1 rounded-full font-bold ${
-                        (records.reduce((a, r) => a + r.totalCE, 0) / records.length) >= 15 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                        : (records.reduce((a, r) => a + r.totalCE, 0) / records.length) >= 10 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400'
-                        : 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
-                      }`}>
-                        Cumulative CE: {records.reduce((a, r) => a + r.totalCE, 0).toFixed(1)} / {records.length * 20}
-                      </span>
-                    )}
-                  </h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Reg: <span className="font-mono font-medium">{student.regNumber}</span>
-                    <span className="mx-2 text-gray-300 dark:text-gray-600">·</span>
-                    Batch: <span className="font-medium text-gray-700 dark:text-gray-300">{student.batch?.name}</span>
-                  </p>
-                  {user?.role === 'ADMIN' && (
-                    <div className="mt-3.5">
-                      <button
-                        onClick={downloadCompleteDossier}
-                        className="text-xs bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-semibold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm hover:shadow-md"
-                      >
-                        <svg className="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        One-Click Download All Reports (Dossier)
-                      </button>
+              <div className="flex items-start justify-between flex-wrap gap-4">
+                {/* Avatar + info */}
+                <div className="flex items-start gap-4">
+                  {/* Photo avatar */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-600 bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                      {student.photo
+                        ? <img src={student.photo} alt={student.fullName} className="w-full h-full object-cover" />
+                        : <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 select-none">
+                            {student.fullName.charAt(0).toUpperCase()}
+                          </span>
+                      }
                     </div>
-                  )}
+                    {/* Camera button — teacher only */}
+                    {isTeacher && (
+                      <label className={`absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 flex items-center justify-center cursor-pointer shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors ${photoUploading ? 'opacity-50 pointer-events-none' : ''}`} title="Change photo">
+                        <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} disabled={photoUploading} />
+                        {photoUploading
+                          ? <svg className="w-3 h-3 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                          : <svg className="w-3 h-3 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                        }
+                      </label>
+                    )}
+                  </div>
+
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                      {student.fullName}
+                      {user?.role === 'ADMIN' && records.length > 0 && (
+                        <span className={`text-sm px-2.5 py-1 rounded-full font-bold ${
+                          (records.reduce((a, r) => a + r.totalCE, 0) / records.length) >= 15 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                          : (records.reduce((a, r) => a + r.totalCE, 0) / records.length) >= 10 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400'
+                          : 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+                        }`}>
+                          Cumulative CE: {records.reduce((a, r) => a + r.totalCE, 0).toFixed(1)} / {records.length * 20}
+                        </span>
+                      )}
+                    </h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      Reg: <span className="font-mono font-medium">{student.regNumber}</span>
+                      <span className="mx-2 text-gray-300 dark:text-gray-600">·</span>
+                      Batch: <span className="font-medium text-gray-700 dark:text-gray-300">{student.batch?.name}</span>
+                    </p>
+                    {user?.role === 'ADMIN' && (
+                      <div className="mt-3.5">
+                        <button
+                          onClick={downloadCompleteDossier}
+                          className="text-xs bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-semibold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm hover:shadow-md"
+                        >
+                          <svg className="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          One-Click Download All Reports (Dossier)
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
                 {isTeacher && (
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button onClick={() => openEditStudent(student)}

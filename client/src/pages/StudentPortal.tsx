@@ -75,9 +75,17 @@ export default function StudentPortal() {
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         {/* Simple Profile Overview */}
-        <div className="mb-10">
-          <h2 className="text-3xl font-bold text-slate-800">{student.fullName}</h2>
-          <p className="text-sm text-slate-500 mt-1">Registration: {student.regNumber} &bull; Batch: {student.batch?.name}</p>
+        <div className="mb-10 flex items-center gap-5">
+          <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-slate-200 bg-emerald-100 flex items-center justify-center flex-shrink-0">
+            {student.photo
+              ? <img src={student.photo} alt={student.fullName} className="w-full h-full object-cover" />
+              : <span className="text-3xl font-bold text-emerald-600 select-none">{student.fullName.charAt(0).toUpperCase()}</span>
+            }
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-slate-800">{student.fullName}</h2>
+            <p className="text-sm text-slate-500 mt-1">Registration: {student.regNumber} &bull; Batch: {student.batch?.name}</p>
+          </div>
         </div>
 
         {/* Clean Tabs */}
