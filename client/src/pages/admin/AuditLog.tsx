@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { useAudit, AuditFilters } from '../../hooks/useAudit';
 
-const ACTIONS  = ['CREATE', 'UPDATE', 'DELETE'];
-const ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval'];
+const ACTIONS  = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN'];
+const ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval', 'User'];
 const PAGE_SIZE = 50;
 
 const inputCls = 'border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400';
@@ -13,11 +13,13 @@ const ACTION_BADGE: Record<string, string> = {
   CREATE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
   UPDATE: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
   DELETE: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+  LOGIN:  'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400',
 };
 
 const ROLE_BADGE: Record<string, string> = {
   ADMIN:   'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400',
   TEACHER: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
+  STUDENT: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
 };
 
 function fmt(iso: string) {

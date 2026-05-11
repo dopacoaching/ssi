@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const userModel = require('../models/userModel');
 const studentModel = require('../models/studentModel');
 const { ok, badRequest, unauthorized } = require('../views/response');
+const { logAudit } = require('../utils/audit');
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -52,6 +53,15 @@ async function login(req, res) {
   res.cookie('accessToken',  accessToken,  { ...COOKIE_OPTS, maxAge: 15 * 60 * 1000 });
   res.cookie('refreshToken', refreshToken, { ...COOKIE_OPTS, maxAge: 7 * 24 * 60 * 60 * 1000 });
   res.cookie('sessionExists', '1', SESSION_FLAG_OPTS);
+
+  // Audit successful login
+  const auditUser = {
+    id:   account.id,
+    name: account.name || account.fullName,
+    role: account.role || 'STUDENT'
+  };
+  const entityType = account.role ? 'User' : 'Student';
+  logAudit({ user: auditUser }, 'LOGIN', entityType, account.id, `${auditUser.name} logged in`);
 
   return ok(res, { 
     id: account.id, 
