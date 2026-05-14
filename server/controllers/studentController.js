@@ -62,11 +62,7 @@ async function updatePhoto(req, res) {
 async function update(req, res) {
   const student = await studentModel.findById(req.params.id);
   if (!student || !student.isActive) return notFound(res, 'Student not found');
-  
-  if (req.user.role === 'STUDENT' && req.user.id !== student.id) {
-    return forbidden(res);
-  }
-  
+
   if (req.user.role === 'TEACHER' && !req.user.batchIds.includes(student.batchId)) {
     return forbidden(res);
   }

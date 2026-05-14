@@ -54,6 +54,10 @@ async function updateTeacher(req, res) {
   if (!existing || existing.role !== 'TEACHER') return notFound(res, 'Teacher not found');
   const { name, batchIds, isActive, password } = req.body;
   if (password && password.length < 8) return badRequest(res, 'Password must be at least 8 characters');
+  if (batchIds !== undefined && !Array.isArray(batchIds))
+    return badRequest(res, 'batchIds must be an array');
+  if (isActive !== undefined && typeof isActive !== 'boolean')
+    return badRequest(res, 'isActive must be a boolean');
   const data = {};
   if (name      !== undefined) data.name      = name;
   if (batchIds  !== undefined) data.batchIds  = batchIds;

@@ -1,5 +1,5 @@
 const prisma = require('../utils/prisma');
-const { ok } = require('../views/response');
+const { ok, badRequest } = require('../views/response');
 
 const VALID_ACTIONS  = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN'];
 const VALID_ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval', 'User'];
@@ -20,8 +20,17 @@ async function list(req, res) {
   }
   if (from || to) {
     where.createdAt = {};
-    if (from) where.createdAt.gte = new Date(from);
-    if (to)   where.createdAt.lte = new Date(new Date(to).setHours(23, 59, 59, 999));
+    if (from) {
+      const fromDate = new Date(from);
+      if (isNaN(fromDate.getTime())) return badRequest(res, 'Invalid from date');
+      where.createdAt.gte = fromDate;
+    }
+    if (to) {
+      const toDate = new Date(to);
+      if (isNaN(toDate.getTime())) return badRequest(res, 'Invalid to date');
+      toDate.setHours(23, 59, 59, 999);
+      where.createdAt.lte = toDate;
+    }
   }
 
   const [items, total] = await Promise.all([

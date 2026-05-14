@@ -1,9 +1,22 @@
 const prisma = require('../utils/prisma');
 
+// All selects explicitly omit the password field.
+const BASE_SELECT = {
+  id: true,
+  fullName: true,
+  regNumber: true,
+  batchId: true,
+  isActive: true,
+  photo: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
 const findByBatch = (batchId) =>
   prisma.student.findMany({
     where: { batchId, isActive: true },
-    include: {
+    select: {
+      ...BASE_SELECT,
       batch: { select: { id: true, name: true } },
       ceRecords: {
         select: { totalCE: true, month: true, year: true },
@@ -16,13 +29,16 @@ const findByBatch = (batchId) =>
 const findById = (id) =>
   prisma.student.findUnique({
     where: { id },
-    include: { batch: { select: { id: true, name: true } } },
+    select: {
+      ...BASE_SELECT,
+      batch: { select: { id: true, name: true } },
+    },
   });
-
 
 const findByRegNumber = (regNumber) =>
   prisma.student.findFirst({
     where: { regNumber, isActive: true },
+    // include password only for auth — caller must add select override
   });
 
 const findAllActive = (batchIds) => {
@@ -30,21 +46,39 @@ const findAllActive = (batchIds) => {
   if (batchIds) where.batchId = { in: batchIds };
   return prisma.student.findMany({
     where,
-    include: { batch: { select: { id: true, name: true } } },
+    select: {
+      ...BASE_SELECT,
+      batch: { select: { id: true, name: true } },
+    },
     orderBy: [{ batchId: 'asc' }, { regNumber: 'asc' }],
   });
 };
 
-const create = (data) => prisma.student.create({ data });
+const create = (data) =>
+  prisma.student.create({
+    data,
+    select: BASE_SELECT,
+  });
 
-const update = (id, data) => prisma.student.update({ where: { id }, data });
+const update = (id, data) =>
+  prisma.student.update({
+    where: { id },
+    data,
+    select: BASE_SELECT,
+  });
 
-const softDelete = (id) => prisma.student.update({ where: { id }, data: { isActive: false } });
+const softDelete = (id) =>
+  prisma.student.update({
+    where: { id },
+    data: { isActive: false },
+    select: { id: true },
+  });
 
 const findBatchReport = (batchId) =>
   prisma.student.findMany({
     where: { batchId, isActive: true },
-    include: {
+    select: {
+      ...BASE_SELECT,
       batch:        { select: { id: true, name: true } },
       weeklyTests:  { orderBy: { weekDate: 'asc' } },
       monthlyTests: { orderBy: [{ year: 'asc' }, { month: 'asc' }] },
@@ -64,7 +98,10 @@ const search = (q, batchIds) => {
   if (batchIds && batchIds.length > 0) where.batchId = { in: batchIds };
   return prisma.student.findMany({
     where,
-    include: { batch: { select: { id: true, name: true } } },
+    select: {
+      ...BASE_SELECT,
+      batch: { select: { id: true, name: true } },
+    },
     take: 10,
     orderBy: { regNumber: 'asc' },
   });
@@ -75,7 +112,8 @@ const findAllWithLatestCE = (batchIds) => {
   if (batchIds && batchIds.length > 0) where.batchId = { in: batchIds };
   return prisma.student.findMany({
     where,
-    include: {
+    select: {
+      ...BASE_SELECT,
       batch: { select: { id: true, name: true } },
       ceRecords: {
         orderBy: [{ year: 'desc' }, { month: 'desc' }],

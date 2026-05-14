@@ -114,8 +114,11 @@ async function upsert(req, res) {
   }
 
   const m = Number(month), y = Number(year);
-  if (m < 1 || m > 12) return badRequest(res, 'Month must be 1–12');
-  if (y < 2000) return badRequest(res, 'Year must be 2000 or later');
+  if (!isFinite(m) || m < 1 || m > 12) return badRequest(res, 'Month must be 1–12');
+  if (!isFinite(y) || y < 2000) return badRequest(res, 'Year must be 2000 or later');
+  const att = Number(attendancePct);
+  if (!isFinite(att) || att < 0 || att > 100)
+    return badRequest(res, 'attendancePct must be between 0 and 100');
 
   const now = new Date();
   if (y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth() + 1)) {

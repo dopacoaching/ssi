@@ -167,6 +167,10 @@ async function addWeekly(req, res) {
     return badRequest(res, "Missing fields");
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
+  if (!isFinite(Number(marks)) || Number(marks) < 0)
+    return badRequest(res, "marks must be a non-negative number");
+  if (Number(marks) > Number(maxMarks))
+    return badRequest(res, "marks cannot exceed maxMarks");
   const d = new Date(weekDate);
   if (
     await isLocked(
@@ -228,6 +232,10 @@ async function addMonthly(req, res) {
     return badRequest(res, "Missing fields");
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
+  if (!isFinite(Number(marks)) || Number(marks) < 0)
+    return badRequest(res, "marks must be a non-negative number");
+  if (Number(marks) > Number(maxMarks))
+    return badRequest(res, "marks cannot exceed maxMarks");
   const now = new Date();
   const m = Number(month),
     y = Number(year);
@@ -296,6 +304,15 @@ async function bulkAdd(req, res) {
     return badRequest(res, "subject and maxMarks required");
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
+  if (!isFinite(Number(maxMarks)))
+    return badRequest(res, "maxMarks must be a finite number");
+  for (const entry of entries) {
+    if (entry.marks == null) continue;
+    if (!isFinite(Number(entry.marks)) || Number(entry.marks) < 0)
+      return badRequest(res, `Invalid marks for student ${entry.studentId}`);
+    if (Number(entry.marks) > Number(maxMarks))
+      return badRequest(res, `marks exceed maxMarks for student ${entry.studentId}`);
+  }
 
   let createdCount = 0,
     skippedCount = 0;
@@ -457,9 +474,17 @@ async function updateWeekly(req, res) {
   }
 
   const { marks, maxMarks, chapter } = req.body;
+  const resolvedMarks    = marks    !== undefined ? Number(marks)    : test.marks;
+  const resolvedMaxMarks = maxMarks !== undefined ? Number(maxMarks) : test.maxMarks;
+  if (marks !== undefined && (!isFinite(resolvedMarks) || resolvedMarks < 0))
+    return badRequest(res, "marks must be a non-negative number");
+  if (maxMarks !== undefined && resolvedMaxMarks <= 0)
+    return badRequest(res, "maxMarks must be positive");
+  if (resolvedMarks > resolvedMaxMarks)
+    return badRequest(res, "marks cannot exceed maxMarks");
   const updateData = {};
-  if (marks !== undefined) updateData.marks = Number(marks);
-  if (maxMarks !== undefined) updateData.maxMarks = Number(maxMarks);
+  if (marks !== undefined) updateData.marks = resolvedMarks;
+  if (maxMarks !== undefined) updateData.maxMarks = resolvedMaxMarks;
   if (chapter !== undefined) updateData.chapter = chapter;
 
   const updated = await testModel.updateWeekly(testId, updateData);
@@ -529,9 +554,17 @@ async function updateMonthly(req, res) {
   }
 
   const { marks, maxMarks } = req.body;
+  const resolvedMarks    = marks    !== undefined ? Number(marks)    : test.marks;
+  const resolvedMaxMarks = maxMarks !== undefined ? Number(maxMarks) : test.maxMarks;
+  if (marks !== undefined && (!isFinite(resolvedMarks) || resolvedMarks < 0))
+    return badRequest(res, "marks must be a non-negative number");
+  if (maxMarks !== undefined && resolvedMaxMarks <= 0)
+    return badRequest(res, "maxMarks must be positive");
+  if (resolvedMarks > resolvedMaxMarks)
+    return badRequest(res, "marks cannot exceed maxMarks");
   const updateData = {};
-  if (marks !== undefined) updateData.marks = Number(marks);
-  if (maxMarks !== undefined) updateData.maxMarks = Number(maxMarks);
+  if (marks !== undefined) updateData.marks = resolvedMarks;
+  if (maxMarks !== undefined) updateData.maxMarks = resolvedMaxMarks;
 
   const updated = await testModel.updateMonthly(testId, updateData);
 

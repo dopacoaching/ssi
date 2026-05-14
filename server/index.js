@@ -3,12 +3,17 @@ require('dotenv').config();
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const helmet = require('helmet');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
-app.use(express.json());
+const allowedOrigin = process.env.CLIENT_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : null);
+if (!allowedOrigin) throw new Error('CLIENT_URL must be set in production');
+
+app.use(helmet());
+app.use(cors({ origin: allowedOrigin, credentials: true }));
+app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 
 // API Routes

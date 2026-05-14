@@ -18,7 +18,7 @@ router.get('/students',              ...admin, asyncHandler(ctrl.listAllStudents
 router.get('/batches/:id/analytics', verifyToken, requireRole('ADMIN', 'TEACHER'), asyncHandler(ctrl.batchAnalytics));
 router.get('/alerts',                verifyToken, requireRole('ADMIN', 'TEACHER'), asyncHandler(ctrl.alerts));
 
-router.get('/batches/:id/approvals',  verifyToken, asyncHandler(ctrl.listBatchApprovals));
+router.get('/batches/:id/approvals',  verifyToken, requireRole('ADMIN', 'TEACHER'), asyncHandler(ctrl.listBatchApprovals));
 router.post('/batches/:id/approvals', ...admin, asyncHandler(ctrl.toggleBatchApproval));
 router.post('/batches/transfer',          ...admin, asyncHandler(ctrl.transferStudents));
 
