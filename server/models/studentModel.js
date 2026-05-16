@@ -38,7 +38,7 @@ const findById = (id) =>
 const findByRegNumber = (regNumber) =>
   prisma.student.findFirst({
     where: { regNumber, isActive: true },
-    // include password only for auth — caller must add select override
+    select: { ...BASE_SELECT, password: true, role: true, batchId: true },
   });
 
 const findAllActive = (batchIds) => {

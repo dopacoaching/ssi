@@ -135,7 +135,7 @@ async function upsert(req, res) {
 
   const scores = computeCE({
     ...marks, mcqPct,
-    attendancePct: Number(attendancePct),
+    attendancePct: att,
     hasMedCert,
     notesStatus,
   });
@@ -143,7 +143,7 @@ async function upsert(req, res) {
   const payload = {
     month: m, year: y,
     ...marks, mcqPct,
-    attendancePct: Number(attendancePct),
+    attendancePct: att,
     hasMedCert,
     notesStatus,
     ...scores,

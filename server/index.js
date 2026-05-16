@@ -9,7 +9,10 @@ const { errorHandler } = require('./middleware/errorHandler');
 const app = express();
 
 const allowedOrigin = process.env.CLIENT_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : null);
-if (!allowedOrigin) throw new Error('CLIENT_URL must be set in production');
+if (!allowedOrigin) {
+  console.error('[startup] CLIENT_URL environment variable is not set — cannot start in production');
+  throw new Error('CLIENT_URL must be set in production');
+}
 
 app.use(helmet());
 app.use(cors({ origin: allowedOrigin, credentials: true }));

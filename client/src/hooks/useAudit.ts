@@ -3,9 +3,9 @@ import api from '../utils/api';
 
 export interface AuditEntry {
   id: string;
-  userId: string;
-  userName: string;
-  userRole: string;
+  userId:   string | null;
+  userName: string | null;
+  userRole: string | null;
   action: string;
   entity: string;
   entityId: string;
