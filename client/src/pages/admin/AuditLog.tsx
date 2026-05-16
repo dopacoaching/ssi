@@ -3,17 +3,19 @@ import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { useAudit, AuditFilters } from '../../hooks/useAudit';
 
-const ACTIONS  = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN'];
-const ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval', 'User'];
+const ACTIONS  = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'ERROR', 'FAILED_LOGIN'];
+const ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval', 'User', 'Auth', 'System'];
 const PAGE_SIZE = 50;
 
 const inputCls = 'border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400';
 
 const ACTION_BADGE: Record<string, string> = {
-  CREATE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-  UPDATE: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
-  DELETE: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-  LOGIN:  'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400',
+  CREATE:       'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+  UPDATE:       'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
+  DELETE:       'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+  LOGIN:        'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400',
+  ERROR:        'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400',
+  FAILED_LOGIN: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400',
 };
 
 const ROLE_BADGE: Record<string, string> = {
@@ -59,7 +61,7 @@ export default function AuditLogPage() {
         <div className="mb-5">
           <Link to="/" className="text-sm text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium">← Dashboard</Link>
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-2">Audit Log</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track every create, update, and delete action across the system</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track every action across the system — including errors, failed logins, and access violations</p>
         </div>
 
         {/* Filters */}
@@ -148,10 +150,14 @@ export default function AuditLogPage() {
                       {fmt(entry.createdAt)}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100 leading-tight">{entry.userName}</p>
-                      <span className={`inline-block mt-0.5 text-xs px-1.5 py-0.5 rounded-md font-semibold ${ROLE_BADGE[entry.userRole] ?? ''}`}>
-                        {entry.userRole}
-                      </span>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100 leading-tight">
+                        {entry.userName ?? <span className="italic text-gray-400 dark:text-gray-500">Anonymous</span>}
+                      </p>
+                      {entry.userRole && (
+                        <span className={`inline-block mt-0.5 text-xs px-1.5 py-0.5 rounded-md font-semibold ${ROLE_BADGE[entry.userRole] ?? ''}`}>
+                          {entry.userRole}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-block text-xs px-2 py-1 rounded-lg font-semibold ${ACTION_BADGE[entry.action] ?? 'bg-gray-100 text-gray-600'}`}>

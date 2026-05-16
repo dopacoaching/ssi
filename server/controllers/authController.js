@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const userModel = require('../models/userModel');
 const studentModel = require('../models/studentModel');
 const { ok, badRequest, unauthorized } = require('../views/response');
-const { logAudit } = require('../utils/audit');
+const { logAudit, logFailedLogin } = require('../utils/audit');
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -41,12 +41,24 @@ async function login(req, res) {
     account = await studentModel.findByRegNumber(regNumber);
   }
 
-  if (!account) return unauthorized(res, 'Invalid credentials');
-  if (!account.isActive) return unauthorized(res, 'Invalid credentials');
-  if (!account.password) return unauthorized(res, 'Invalid credentials');
+  if (!account) {
+    logFailedLogin(email || regNumber, 'Account not found');
+    return unauthorized(res, 'Invalid credentials');
+  }
+  if (!account.isActive) {
+    logFailedLogin(email || regNumber, 'Account is inactive');
+    return unauthorized(res, 'Invalid credentials');
+  }
+  if (!account.password) {
+    logFailedLogin(email || regNumber, 'No password set');
+    return unauthorized(res, 'Invalid credentials');
+  }
 
   const match = await bcrypt.compare(password, account.password);
-  if (!match) return unauthorized(res, 'Invalid credentials');
+  if (!match) {
+    logFailedLogin(email || regNumber, 'Wrong password');
+    return unauthorized(res, 'Invalid credentials');
+  }
 
   const { accessToken, refreshToken } = signTokens(account);
 

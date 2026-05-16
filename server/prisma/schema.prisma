@@ -29,12 +29,12 @@ enum Role {
 }
 
 model Batch {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
-  name      String    @unique
+  id        String          @id @default(auto()) @map("_id") @db.ObjectId
+  name      String          @unique
   year      Int
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
   students  Student[]
   approvals BatchApproval[]
 }
@@ -53,16 +53,16 @@ model BatchApproval {
 
 model Student {
   id           String        @id @default(auto()) @map("_id") @db.ObjectId
-  fullName       String
-  regNumber      String   @unique
-  password       String?
-  photo          String?
-  batchId        String        @db.ObjectId
-  batch          Batch         @relation(fields: [batchId], references: [id])
-  role           Role          @default(STUDENT)
-  isActive       Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  fullName     String
+  regNumber    String        @unique
+  password     String?
+  photo        String?
+  batchId      String        @db.ObjectId
+  batch        Batch         @relation(fields: [batchId], references: [id])
+  role         Role          @default(STUDENT)
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   ceRecords    CERecord[]
   weeklyTests  WeeklyTest[]
   monthlyTests MonthlyTest[]
@@ -70,38 +70,38 @@ model Student {
 }
 
 model CERecord {
-  id            String      @id @default(auto()) @map("_id") @db.ObjectId
-  studentId     String      @db.ObjectId
-  student       Student     @relation(fields: [studentId], references: [id])
-  month         Int
-  year          Int
-  physicsMarks  Float
-  physicsMax    Float       @default(100)
-  chemMarks     Float
-  chemMax       Float       @default(100)
-  mathMarks     Float
-  mathMax       Float       @default(100)
-  bioMarks      Float
-  bioMax        Float       @default(100)
-  lang1Marks    Float
-  lang1Max      Float       @default(100)
-  lang2Marks    Float
-  lang2Max      Float       @default(100)
-  psychologyMarks Float     @default(0)
-  psychologyMax   Float     @default(100)
-  mcqMarks      Float       @default(0)
-  mcqMax        Float       @default(100)
-  mcqPct        Float
-  attendancePct Float
-  hasMedCert    Boolean     @default(false)
-  notesStatus   NotesStatus
-  theoryScore   Float
-  mcqScore      Float
-  attendScore   Float
-  notesScore    Float
-  totalCE       Float
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  studentId       String      @db.ObjectId
+  student         Student     @relation(fields: [studentId], references: [id])
+  month           Int
+  year            Int
+  physicsMarks    Float
+  physicsMax      Float       @default(100)
+  chemMarks       Float
+  chemMax         Float       @default(100)
+  mathMarks       Float
+  mathMax         Float       @default(100)
+  bioMarks        Float
+  bioMax          Float       @default(100)
+  lang1Marks      Float
+  lang1Max        Float       @default(100)
+  lang2Marks      Float
+  lang2Max        Float       @default(100)
+  psychologyMarks Float       @default(0)
+  psychologyMax   Float       @default(100)
+  mcqMarks        Float       @default(0)
+  mcqMax          Float       @default(100)
+  mcqPct          Float
+  attendancePct   Float
+  hasMedCert      Boolean     @default(false)
+  notesStatus     NotesStatus
+  theoryScore     Float
+  mcqScore        Float
+  attendScore     Float
+  notesScore      Float
+  totalCE         Float
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 }
 
 enum NotesStatus {
@@ -153,9 +153,9 @@ model Remark {
 
 model AuditLog {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @db.ObjectId
-  userName    String
-  userRole    String
+  userId      String?  @db.ObjectId
+  userName    String?
+  userRole    String?
   action      String
   entity      String
   entityId    String

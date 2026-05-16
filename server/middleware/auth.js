@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { unauthorized, forbidden } = require('../views/response');
+const { logError } = require('../utils/audit');
 
 function verifyToken(req, res, next) {
   const token = req.cookies?.accessToken;
@@ -16,6 +17,7 @@ function verifyToken(req, res, next) {
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!roles.includes(req.user?.role)) {
+      logError(req, 403, `Role "${req.user?.role}" attempted to access route restricted to [${roles.join(', ')}] — ${req.method} ${req.originalUrl}`);
       return forbidden(res, 'Insufficient permissions');
     }
     next();

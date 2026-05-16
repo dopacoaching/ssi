@@ -1,8 +1,8 @@
 const prisma = require('../utils/prisma');
 const { ok, badRequest } = require('../views/response');
 
-const VALID_ACTIONS  = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN'];
-const VALID_ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval', 'User'];
+const VALID_ACTIONS  = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'ERROR', 'FAILED_LOGIN'];
+const VALID_ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval', 'User', 'Auth', 'System'];
 
 async function list(req, res) {
   const { page = '1', limit = '50', action, entity, search, from, to } = req.query;

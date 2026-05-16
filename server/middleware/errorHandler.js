@@ -1,3 +1,5 @@
+const { logError } = require('../utils/audit');
+
 function errorHandler(err, req, res, next) {
   console.error(err);
   const status = err.status || 500;
@@ -5,6 +7,11 @@ function errorHandler(err, req, res, next) {
   const message = isProduction && status === 500
     ? 'Internal server error'
     : err.message || 'Internal server error';
+
+  if (status >= 500) {
+    logError(req, status, err.message || 'Unknown server error');
+  }
+
   res.status(status).json({ success: false, message });
 }
 
