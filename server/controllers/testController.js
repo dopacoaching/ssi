@@ -159,12 +159,16 @@ async function listWeekly(req, res) {
   return ok(res, tests);
 }
 
+const VALID_TEST_TYPES = new Set(['Theory', 'MCQ']);
+
 async function addWeekly(req, res) {
   const student = await guardStudent(req, res);
   if (!student) return;
   const { weekDate, testType, subject, chapter, marks, maxMarks } = req.body;
   if (!weekDate || !subject || marks == null || !maxMarks)
     return badRequest(res, "Missing fields");
+  if (testType !== undefined && !VALID_TEST_TYPES.has(testType))
+    return badRequest(res, "testType must be 'Theory' or 'MCQ'");
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
   if (!isFinite(Number(marks)) || Number(marks) < 0)
@@ -230,6 +234,8 @@ async function addMonthly(req, res) {
   const { month, year, testType, subject, marks, maxMarks } = req.body;
   if (!month || !year || !subject || marks == null || !maxMarks)
     return badRequest(res, "Missing fields");
+  if (testType !== undefined && !VALID_TEST_TYPES.has(testType))
+    return badRequest(res, "testType must be 'Theory' or 'MCQ'");
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
   if (!isFinite(Number(marks)) || Number(marks) < 0)

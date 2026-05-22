@@ -7,6 +7,7 @@ const { logAudit } = require('../utils/audit');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
 
 const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const VALID_NOTES_STATUSES = new Set(['COMPLETE', 'PARTIAL', 'INCOMPLETE']);
 
 async function isBatchLocked(studentId, month, year) {
   const student = await studentModel.findById(studentId);
@@ -113,6 +114,10 @@ async function upsert(req, res) {
     return badRequest(res, 'Missing required CE fields');
   }
 
+  if (!VALID_NOTES_STATUSES.has(notesStatus)) {
+    return badRequest(res, "notesStatus must be 'COMPLETE', 'PARTIAL', or 'INCOMPLETE'");
+  }
+
   const m = Number(month), y = Number(year);
   if (!isFinite(m) || m < 1 || m > 12) return badRequest(res, 'Month must be 1–12');
   if (!isFinite(y) || y < 2000) return badRequest(res, 'Year must be 2000 or later');
@@ -172,10 +177,6 @@ async function remove(req, res) {
 
   if (existing.studentId !== student.id) {
     return forbidden(res, 'Record does not belong to this student');
-  }
-
-  if (req.user.role !== 'TEACHER') {
-    return forbidden(res, 'Only teachers can delete CE records');
   }
 
   const isLocked = await isBatchLocked(student.id, existing.month, existing.year);

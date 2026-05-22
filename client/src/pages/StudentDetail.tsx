@@ -178,7 +178,8 @@ export default function StudentDetail() {
   }
 
   useEffect(() => {
-    if (!id) return;
+    // Skip fetching for students — StudentPortal handles its own data loading
+    if (!id || user?.role === 'STUDENT') return;
     fetchOne(id).then((s) => {
       if (s === null) setStudentError(true);
       else setStudent(s);
@@ -186,7 +187,7 @@ export default function StudentDetail() {
     fetchCE().catch(() => {});
     fetchAll().catch(() => {});
     fetchRemarks().catch(() => {});
-  }, [id, fetchOne, fetchCE, fetchAll, fetchRemarks]);
+  }, [id, user?.role, fetchOne, fetchCE, fetchAll, fetchRemarks]);
 
   function openEditStudent(s: Student) {
     setEditStudentForm({ 

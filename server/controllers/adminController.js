@@ -88,7 +88,14 @@ async function batchAnalytics(req, res) {
     return forbidden(res);
   }
 
-  const students = await studentModel.findBatchReport(req.params.id);
+  const students = await prisma.student.findMany({
+    where: { batchId: req.params.id, isActive: true },
+    select: {
+      id: true, fullName: true, regNumber: true,
+      ceRecords: { orderBy: [{ year: 'asc' }, { month: 'asc' }] },
+    },
+    orderBy: { regNumber: 'asc' },
+  });
 
   const monthMap = {};
   students.forEach(s => {

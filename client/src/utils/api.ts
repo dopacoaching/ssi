@@ -6,7 +6,7 @@ const api = axios.create({
 });
 
 let refreshing = false;
-let queue: Array<() => void> = [];
+let queue: Array<{ resolve: () => void; reject: (e: unknown) => void }> = [];
 
 api.interceptors.response.use(
   (res) => res,
@@ -17,18 +17,19 @@ api.interceptors.response.use(
     }
     if (err.response?.status === 401 && !original._retry) {
       if (refreshing) {
-        return new Promise((resolve) => {
-          queue.push(() => resolve(api(original)));
+        return new Promise((resolve, reject) => {
+          queue.push({ resolve: () => resolve(api(original)), reject });
         });
       }
       original._retry = true;
       refreshing = true;
       try {
         await axios.post('/api/auth/refresh', {}, { withCredentials: true });
-        queue.forEach((cb) => cb());
+        queue.forEach((cb) => cb.resolve());
         queue = [];
         return api(original);
-      } catch {
+      } catch (refreshErr) {
+        queue.forEach((cb) => cb.reject(refreshErr));
         queue = [];
         const isStudentPath = window.location.pathname.includes('/students/') || window.location.pathname.includes('/student/login');
         window.location.href = isStudentPath ? '/student/login' : '/login';
