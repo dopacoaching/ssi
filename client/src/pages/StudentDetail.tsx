@@ -231,9 +231,8 @@ export default function StudentDetail() {
     if (!file || !id) return;
     setPhotoUploading(true);
     try {
-      await updatePhoto(id, file);
-      const refreshed = await fetchOne(id);
-      setStudent(refreshed);
+      const updated = await updatePhoto(id, file);
+      setStudent(updated);
       toast.success('Photo updated');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to update photo');
@@ -401,7 +400,12 @@ export default function StudentDetail() {
                   <div className="relative flex-shrink-0">
                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-600 bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
                       {student.photo
-                        ? <img src={student.photo} alt={student.fullName} className="w-full h-full object-cover" />
+                        ? <img
+                            src={student.photo}
+                            alt={student.fullName}
+                            className="w-full h-full object-cover"
+                            onError={() => setStudent(prev => prev ? { ...prev, photo: undefined } : prev)}
+                          />
                         : <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 select-none">
                             {student.fullName.charAt(0).toUpperCase()}
                           </span>
