@@ -12,12 +12,15 @@ export interface Remark {
 export function useRemarks(studentId: string) {
   const [remarks, setRemarks] = useState<Remark[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
-    setLoading(true);
+    setLoading(true); setError(null);
     try {
       const { data } = await api.get(`/students/${studentId}/remarks`);
       setRemarks(data.data);
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Failed to load remarks');
     } finally { setLoading(false); }
   }, [studentId]);
 
@@ -31,5 +34,5 @@ export function useRemarks(studentId: string) {
     return data.data as Remark;
   }, [studentId]);
 
-  return { remarks, loading, fetch, add, flag };
+  return { remarks, loading, error, fetch, add, flag };
 }

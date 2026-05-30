@@ -33,9 +33,10 @@ export function useTests(studentId: string) {
   const [weekly, setWeekly]   = useState<WeeklyTest[]>([]);
   const [monthly, setMonthly] = useState<MonthlyTest[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
-    setLoading(true);
+    setLoading(true); setError(null);
     try {
       const [w, m] = await Promise.all([
         api.get(`/students/${studentId}/weekly-tests`),
@@ -43,6 +44,8 @@ export function useTests(studentId: string) {
       ]);
       setWeekly(w.data.data);
       setMonthly(m.data.data);
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Failed to load tests');
     } finally { setLoading(false); }
   }, [studentId]);
 
@@ -74,7 +77,7 @@ export function useTests(studentId: string) {
     await api.delete(`/monthly-tests/${testId}`);
   }, []);
 
-  return { weekly, monthly, loading, fetchAll, addWeekly, updateWeekly, deleteWeekly, addMonthly, updateMonthly, deleteMonthly };
+  return { weekly, monthly, loading, error, fetchAll, addWeekly, updateWeekly, deleteWeekly, addMonthly, updateMonthly, deleteMonthly };
 }
 
 export function useBatchTests() {

@@ -12,12 +12,7 @@ import CEForm from './CEForm';
 import StudentPortal from './StudentPortal';
 import ConfirmModal from '../components/ConfirmModal';
 import EmptyState from '../components/EmptyState';
-import {
-  exportWeeklyExcel,  exportMonthlyExcel,
-  exportWeeklyPDF,    exportMonthlyPDF,
-  exportCEExcel,      exportCEPDF,
-  exportReportCardPDF,
-} from '../utils/exportUtils';
+const loadExportUtils = () => import('../utils/exportUtils');
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -83,11 +78,11 @@ export default function StudentDetail() {
     return rec ? !!rec.isApproved : false;
   }
 
-  function downloadCompleteDossier() {
+  async function downloadCompleteDossier() {
     if (!student) return;
     const name = student.fullName;
     let count = 0;
-    
+    const { exportReportCardPDF, exportCEExcel, exportWeeklyExcel, exportMonthlyExcel } = await loadExportUtils();
     if (records.length > 0) {
       exportReportCardPDF({ student: student as any, ceRecords: records, remarks });
       exportCEExcel(records, name);
@@ -101,7 +96,6 @@ export default function StudentDetail() {
       exportMonthlyExcel(monthly, name);
       count++;
     }
-    
     if (count > 0) {
       toast.success(`Dossier exported: ${count} report files downloaded!`);
     } else {
@@ -508,7 +502,7 @@ export default function StudentDetail() {
             {user?.role === 'ADMIN' && student && records.length > 0 && (
               <div className="flex justify-end">
                 <button
-                  onClick={() => exportReportCardPDF({ student: student as any, ceRecords: records, remarks })}
+                  onClick={async () => { const { exportReportCardPDF } = await loadExportUtils(); exportReportCardPDF({ student: student as any, ceRecords: records, remarks }); }}
                   className="text-sm px-4 py-2 border border-indigo-300 dark:border-indigo-600 rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 font-medium flex items-center gap-1.5">
                   ↓ Download Report Card
                 </button>
@@ -792,9 +786,9 @@ export default function StudentDetail() {
                 )}
                 {user?.role === 'ADMIN' && filteredCE.length > 0 && (
                   <>
-                    <button onClick={() => exportCEExcel(filteredCE, `${studentName}${filterLabel(ceFilter.month, ceFilter.year) ? '_' + filterLabel(ceFilter.month, ceFilter.year) : ''}`)}
+                    <button onClick={async () => { const { exportCEExcel } = await loadExportUtils(); exportCEExcel(filteredCE, `${studentName}${filterLabel(ceFilter.month, ceFilter.year) ? '_' + filterLabel(ceFilter.month, ceFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ Excel</button>
-                    <button onClick={() => exportCEPDF(filteredCE, `${studentName}${filterLabel(ceFilter.month, ceFilter.year) ? '_' + filterLabel(ceFilter.month, ceFilter.year) : ''}`)}
+                    <button onClick={async () => { const { exportCEPDF } = await loadExportUtils(); exportCEPDF(filteredCE, `${studentName}${filterLabel(ceFilter.month, ceFilter.year) ? '_' + filterLabel(ceFilter.month, ceFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ PDF</button>
                   </>
                 )}
@@ -972,9 +966,9 @@ export default function StudentDetail() {
               <div>
                 {user?.role === 'ADMIN' && filteredWeekly.length > 0 && (
                   <div className="flex justify-end gap-2 mb-2">
-                    <button onClick={() => exportWeeklyExcel(filteredWeekly, `${studentName}${filterLabel(wFilter.month, wFilter.year) ? '_' + filterLabel(wFilter.month, wFilter.year) : ''}`)}
+                    <button onClick={async () => { const { exportWeeklyExcel } = await loadExportUtils(); exportWeeklyExcel(filteredWeekly, `${studentName}${filterLabel(wFilter.month, wFilter.year) ? '_' + filterLabel(wFilter.month, wFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ Excel</button>
-                    <button onClick={() => exportWeeklyPDF(filteredWeekly, `${studentName}${filterLabel(wFilter.month, wFilter.year) ? '_' + filterLabel(wFilter.month, wFilter.year) : ''}`)}
+                    <button onClick={async () => { const { exportWeeklyPDF } = await loadExportUtils(); exportWeeklyPDF(filteredWeekly, `${studentName}${filterLabel(wFilter.month, wFilter.year) ? '_' + filterLabel(wFilter.month, wFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ PDF</button>
                   </div>
                 )}
@@ -1335,9 +1329,9 @@ export default function StudentDetail() {
               <div>
                 {user?.role === 'ADMIN' && filteredMonthly.length > 0 && (
                   <div className="flex justify-end gap-2 mb-2">
-                    <button onClick={() => exportMonthlyExcel(filteredMonthly, `${studentName}${filterLabel(mFilter.month, mFilter.year) ? '_' + filterLabel(mFilter.month, mFilter.year) : ''}`)}
+                    <button onClick={async () => { const { exportMonthlyExcel } = await loadExportUtils(); exportMonthlyExcel(filteredMonthly, `${studentName}${filterLabel(mFilter.month, mFilter.year) ? '_' + filterLabel(mFilter.month, mFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ Excel</button>
-                    <button onClick={() => exportMonthlyPDF(filteredMonthly, `${studentName}${filterLabel(mFilter.month, mFilter.year) ? '_' + filterLabel(mFilter.month, mFilter.year) : ''}`)}
+                    <button onClick={async () => { const { exportMonthlyPDF } = await loadExportUtils(); exportMonthlyPDF(filteredMonthly, `${studentName}${filterLabel(mFilter.month, mFilter.year) ? '_' + filterLabel(mFilter.month, mFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ PDF</button>
                   </div>
                 )}

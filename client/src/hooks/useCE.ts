@@ -31,12 +31,15 @@ export interface CERecord {
 export function useCE(studentId: string) {
   const [records, setRecords] = useState<CERecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
-    setLoading(true);
+    setLoading(true); setError(null);
     try {
       const { data } = await api.get(`/students/${studentId}/ce`);
       setRecords(data.data);
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Failed to load CE records');
     } finally { setLoading(false); }
   }, [studentId]);
 
@@ -54,5 +57,5 @@ export function useCE(studentId: string) {
     return data.data;
   }, [studentId]);
 
-  return { records, loading, fetch, upsert, remove };
+  return { records, loading, error, fetch, upsert, remove };
 }

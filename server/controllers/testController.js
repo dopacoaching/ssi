@@ -25,16 +25,20 @@ async function isLocked(studentId, month, year, userRole) {
 }
 
 async function syncCEForMonth(studentId, month, year) {
-  const weekly = await testModel.findWeeklyByStudent(studentId);
-  const monthly = await testModel.findMonthlyByStudent(studentId);
-
-  const weeklyInMonth = weekly.filter((t) => {
-    const d = new Date(t.weekDate);
-    return d.getMonth() + 1 === month && d.getFullYear() === year;
-  });
-  const monthlyInMonth = monthly.filter(
-    (t) => t.month === month && t.year === year,
-  );
+  const [weeklyInMonth, monthlyInMonth] = await Promise.all([
+    prisma.weeklyTest.findMany({
+      where: {
+        studentId,
+        weekDate: {
+          gte: new Date(year, month - 1, 1),
+          lt:  new Date(year, month,     1),
+        },
+      },
+    }),
+    prisma.monthlyTest.findMany({
+      where: { studentId, month, year },
+    }),
+  ]);
 
   const allTests = [...weeklyInMonth, ...monthlyInMonth];
 
@@ -159,7 +163,8 @@ async function listWeekly(req, res) {
   return ok(res, tests);
 }
 
-const VALID_TEST_TYPES = new Set(['Theory', 'MCQ']);
+const VALID_TEST_TYPES   = new Set(['Theory', 'MCQ']);
+const VALID_SUBJECTS     = new Set(['physics', 'chemistry', 'math', 'biology', 'language 1', 'language 2', 'psychology']);
 
 async function addWeekly(req, res) {
   const student = await guardStudent(req, res);
@@ -169,6 +174,9 @@ async function addWeekly(req, res) {
     return badRequest(res, "Missing fields");
   if (testType !== undefined && !VALID_TEST_TYPES.has(testType))
     return badRequest(res, "testType must be 'Theory' or 'MCQ'");
+  const effectiveType = testType || 'Theory';
+  if (effectiveType !== 'MCQ' && !VALID_SUBJECTS.has(subject.toLowerCase()))
+    return badRequest(res, `subject must be one of: Physics, Chemistry, Math, Biology, Language 1, Language 2, Psychology`);
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
   if (!isFinite(Number(marks)) || Number(marks) < 0)
@@ -176,6 +184,7 @@ async function addWeekly(req, res) {
   if (Number(marks) > Number(maxMarks))
     return badRequest(res, "marks cannot exceed maxMarks");
   const d = new Date(weekDate);
+  if (isNaN(d.getTime())) return badRequest(res, 'Invalid weekDate format');
   if (
     await isLocked(
       req.params.id,
@@ -236,6 +245,9 @@ async function addMonthly(req, res) {
     return badRequest(res, "Missing fields");
   if (testType !== undefined && !VALID_TEST_TYPES.has(testType))
     return badRequest(res, "testType must be 'Theory' or 'MCQ'");
+  const effectiveType = testType || 'Theory';
+  if (effectiveType !== 'MCQ' && !VALID_SUBJECTS.has(subject.toLowerCase()))
+    return badRequest(res, `subject must be one of: Physics, Chemistry, Math, Biology, Language 1, Language 2, Psychology`);
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
   if (!isFinite(Number(marks)) || Number(marks) < 0)
@@ -308,6 +320,11 @@ async function bulkAdd(req, res) {
     return badRequest(res, "No entries provided");
   if (!subject || maxMarks == null)
     return badRequest(res, "subject and maxMarks required");
+  if (testType !== undefined && !VALID_TEST_TYPES.has(testType))
+    return badRequest(res, "testType must be 'Theory' or 'MCQ'");
+  const effectiveType = testType || 'Theory';
+  if (effectiveType !== 'MCQ' && !VALID_SUBJECTS.has(subject.toLowerCase()))
+    return badRequest(res, `subject must be one of: Physics, Chemistry, Math, Biology, Language 1, Language 2, Psychology`);
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
   if (!isFinite(Number(maxMarks)))
@@ -320,6 +337,14 @@ async function bulkAdd(req, res) {
       return badRequest(res, `marks exceed maxMarks for student ${entry.studentId}`);
   }
 
+  // Verify every studentId in entries belongs to this batch (critical auth check)
+  const entryStudentIds = entries.filter(e => e.marks != null).map(e => e.studentId);
+  const batchStudents = await prisma.student.findMany({
+    where: { id: { in: entryStudentIds }, batchId, isActive: true },
+    select: { id: true },
+  });
+  const validStudentIds = new Set(batchStudents.map(s => s.id));
+
   let createdCount = 0,
     skippedCount = 0;
   const affectedStudents = new Set();
@@ -327,6 +352,7 @@ async function bulkAdd(req, res) {
   if (isWeekly) {
     if (!weekDate) return badRequest(res, "weekDate required for weekly tests");
     const d = new Date(weekDate);
+    if (isNaN(d.getTime())) return badRequest(res, 'Invalid weekDate format');
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     if (d > today) return badRequest(res, "Test date cannot be in the future");
@@ -358,6 +384,7 @@ async function bulkAdd(req, res) {
 
     for (const entry of entries) {
       if (entry.marks == null) continue;
+      if (!validStudentIds.has(entry.studentId)) { skippedCount++; continue; }
       if (duplicateSet.has(entry.studentId)) {
         skippedCount++;
         continue;
@@ -413,6 +440,7 @@ async function bulkAdd(req, res) {
 
     for (const entry of entries) {
       if (entry.marks == null) continue;
+      if (!validStudentIds.has(entry.studentId)) { skippedCount++; continue; }
       if (duplicateSet.has(entry.studentId)) {
         skippedCount++;
         continue;

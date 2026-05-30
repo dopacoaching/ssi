@@ -29,6 +29,8 @@ async function add(req, res) {
   if (!student) return;
   const { category, text, isFlagged = false } = req.body;
   if (!category || !text) return badRequest(res, 'Category and text required');
+  if (category.length > 100)  return badRequest(res, 'Category must be 100 characters or fewer');
+  if (text.length > 2000)     return badRequest(res, 'Remark text must be 2000 characters or fewer');
   const remark = await remarkModel.create({
     studentId: req.params.id,
     teacherId: req.user.id,
@@ -45,6 +47,7 @@ async function flag(req, res) {
   const { remarkId } = req.params;
   const existing = await remarkModel.findById(remarkId);
   if (!existing) return notFound(res, 'Remark not found');
+  if (existing.studentId !== student.id) return forbidden(res, 'Remark does not belong to this student');
   const remark = await remarkModel.update(remarkId, { isFlagged: !existing.isFlagged });
   logAudit(req, 'UPDATE', 'Remark', remarkId,
     `${remark.isFlagged ? 'Flagged' : 'Unflagged'} remark for ${student.fullName} (${student.regNumber})`);
