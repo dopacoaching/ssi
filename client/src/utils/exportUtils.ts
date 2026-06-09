@@ -733,7 +733,24 @@ export function exportReportCardPDF({ student, ceRecords, remarks = [] }: Report
   else                  doc.setTextColor(185, 28, 28);
   doc.text(`${avgAtt.toFixed(0)}%`, 145, 71);
 
-  // CE records table
+  // CE records table — sorted chronologically for cumulative calculation
+  const sortedCE = [...ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+  let runningTotal = 0;
+  const ceBodyRows = sortedCE.map((r, i) => {
+    runningTotal += r.totalCE;
+    const maxSoFar = (i + 1) * 20;
+    return [
+      `${MONTHS[r.month]} ${r.year}`,
+      r.theoryScore.toFixed(1),
+      r.mcqScore.toFixed(1),
+      r.attendScore.toFixed(1),
+      r.notesScore.toFixed(1),
+      r.totalCE.toFixed(1),
+      `${runningTotal.toFixed(1)} / ${maxSoFar}`,
+      `${r.attendancePct}%`,
+    ];
+  });
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
@@ -741,19 +758,11 @@ export function exportReportCardPDF({ student, ceRecords, remarks = [] }: Report
 
   autoTable(doc, {
     startY: 92,
-    head: [['Period', 'Theory\n(/10)', 'MCQ\n(/5)', 'Attend.\n(/3)', 'Notes\n(/2)', 'Total\n(/20)', 'Attendance']],
-    body: ceRecords.map((r) => [
-      `${MONTHS[r.month]} ${r.year}`,
-      r.theoryScore.toFixed(1),
-      r.mcqScore.toFixed(1),
-      r.attendScore.toFixed(1),
-      r.notesScore.toFixed(1),
-      r.totalCE.toFixed(1),
-      `${r.attendancePct}%`,
-    ]),
-    headStyles:  { fillColor: [15, 23, 42], fontSize: 9, fontStyle: 'bold', halign: 'center' },
-    bodyStyles:  { fontSize: 8.5, textColor: [30, 41, 59], halign: 'center' },
-    columnStyles: { 0: { halign: 'left' } },
+    head: [['Period', 'Theory\n(/10)', 'MCQ\n(/5)', 'Attend.\n(/3)', 'Notes\n(/2)', 'Total\n(/20)', 'Cumulative\nCE', 'Attendance']],
+    body: ceBodyRows,
+    headStyles:  { fillColor: [15, 23, 42], fontSize: 8.5, fontStyle: 'bold', halign: 'center' },
+    bodyStyles:  { fontSize: 8, textColor: [30, 41, 59], halign: 'center' },
+    columnStyles: { 0: { halign: 'left' }, 6: { fontStyle: 'bold' } },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     tableLineColor: [226, 232, 240],
     tableLineWidth: 0.2,
@@ -765,6 +774,19 @@ export function exportReportCardPDF({ student, ceRecords, remarks = [] }: Report
         else                { data.cell.styles.textColor = [185, 28, 28];  data.cell.styles.fontStyle = 'bold'; }
       }
       if (data.section === 'body' && data.column.index === 6) {
+        // Colour cumulative cell by percentage of max possible
+        const parts = data.cell.text[0].split('/');
+        if (parts.length === 2) {
+          const cum = parseFloat(parts[0]);
+          const max = parseFloat(parts[1]);
+          const pct = max > 0 ? (cum / max) * 100 : 0;
+          if (pct >= 75)      data.cell.styles.textColor = [4, 120, 87];
+          else if (pct >= 50) data.cell.styles.textColor = [180, 83, 9];
+          else                data.cell.styles.textColor = [185, 28, 28];
+        }
+        data.cell.styles.fontStyle = 'bold';
+      }
+      if (data.section === 'body' && data.column.index === 7) {
         const val = parseFloat(String(data.cell.text[0]));
         if (val >= 90)      data.cell.styles.textColor = [4, 120, 87];
         else if (val >= 75) data.cell.styles.textColor = [180, 83, 9];
