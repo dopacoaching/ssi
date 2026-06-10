@@ -247,16 +247,22 @@ export function exportMonthlyExcel(tests: MonthlyRow[], studentName: string) {
 // ── CE Records Excel ──────────────────────────────────────────────────────────
 
 export function exportCEExcel(records: CERow[], studentName: string) {
-  // Sheet 1 – Summary
-  const summary = records.map((r) => ({
-    'Period':           `${MONTHS[r.month]} ${r.year}`,
-    'Theory (/10)':     parseFloat(r.theoryScore.toFixed(2)),
-    'MCQ (/5)':         parseFloat(r.mcqScore.toFixed(2)),
-    'Attendance (/3)':  parseFloat(r.attendScore.toFixed(2)),
-    'Notes (/2)':       parseFloat(r.notesScore.toFixed(2)),
-    'Total CE (/20)':   parseFloat(r.totalCE.toFixed(2)),
-    'Date Added':       new Date(r.createdAt).toLocaleDateString(),
-  }));
+  // Sheet 1 – Summary (sorted chronologically for cumulative column)
+  const sortedRecs = [...records].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+  let ceRunning = 0;
+  const summary = sortedRecs.map((r, i) => {
+    ceRunning += r.totalCE;
+    return {
+      'Period':              `${MONTHS[r.month]} ${r.year}`,
+      'Theory (/10)':        parseFloat(r.theoryScore.toFixed(2)),
+      'MCQ (/5)':            parseFloat(r.mcqScore.toFixed(2)),
+      'Attendance (/3)':     parseFloat(r.attendScore.toFixed(2)),
+      'Notes (/2)':          parseFloat(r.notesScore.toFixed(2)),
+      'Total CE (/20)':      parseFloat(r.totalCE.toFixed(2)),
+      'Cumulative CE':       `${ceRunning.toFixed(2)} / ${(i + 1) * 20}`,
+      'Date Added':          new Date(r.createdAt).toLocaleDateString(),
+    };
+  });
   const wsSummary = XLSX.utils.json_to_sheet(summary);
   applyAutoWidth(wsSummary, summary);
   setRowHeight(wsSummary, summary.length);
@@ -322,20 +328,26 @@ export function exportStudentsExcel(students: StudentRow[], batchName: string) {
 export function exportBatchExcel(students: BatchReportStudent[], batchName: string) {
   const wb = XLSX.utils.book_new();
 
-  // Sheet 1 – CE Records
-  const ceRows = students.flatMap((s) =>
-    s.ceRecords.map((r) => ({
-      'Reg No.':        s.regNumber,
-      'Name':           s.fullName,
-      'Period':         `${MONTHS[r.month]} ${r.year}`,
-      'Theory (/10)':   parseFloat(r.theoryScore.toFixed(2)),
-      'MCQ (/5)':       parseFloat(r.mcqScore.toFixed(2)),
-      'Attendance (/3)':parseFloat(r.attendScore.toFixed(2)),
-      'Notes (/2)':     parseFloat(r.notesScore.toFixed(2)),
-      'Total CE (/20)': parseFloat(r.totalCE.toFixed(2)),
-      'Date Added':     new Date(r.createdAt).toLocaleDateString(),
-    }))
-  );
+  // Sheet 1 – CE Records (cumulative resets per student)
+  const ceRows = students.flatMap((s) => {
+    const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+    let cum = 0;
+    return sorted.map((r, i) => {
+      cum += r.totalCE;
+      return {
+        'Reg No.':         s.regNumber,
+        'Name':            s.fullName,
+        'Period':          `${MONTHS[r.month]} ${r.year}`,
+        'Theory (/10)':    parseFloat(r.theoryScore.toFixed(2)),
+        'MCQ (/5)':        parseFloat(r.mcqScore.toFixed(2)),
+        'Attendance (/3)': parseFloat(r.attendScore.toFixed(2)),
+        'Notes (/2)':      parseFloat(r.notesScore.toFixed(2)),
+        'Total CE (/20)':  parseFloat(r.totalCE.toFixed(2)),
+        'Cumulative CE':   `${cum.toFixed(2)} / ${(i + 1) * 20}`,
+        'Date Added':      new Date(r.createdAt).toLocaleDateString(),
+      };
+    });
+  });
   const wsCE = XLSX.utils.json_to_sheet(ceRows.length ? ceRows : [{ Note: 'No CE records' }]);
   if (ceRows.length) {
     applyAutoWidth(wsCE, ceRows);
@@ -567,21 +579,29 @@ export function exportStudentsPDF(students: StudentRow[], batchName: string) {
 export function exportCEPDF(records: CERow[], studentName: string) {
   const doc = basePDF('CE Records Report', studentName);
 
-  autoTable(doc, {
-    startY: 40,
-    head:   [['Period', 'Theory\n(/10)', 'MCQ\n(/5)', 'Attend.\n(/3)', 'Notes\n(/2)', 'Total CE\n(/20)', 'Date Added']],
-    body:   records.map((r) => [
+  const sortedForPDF = [...records].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+  let pdfRunning = 0;
+  const ceBodyPDF = sortedForPDF.map((r, i) => {
+    pdfRunning += r.totalCE;
+    return [
       `${MONTHS[r.month]} ${r.year}`,
       r.theoryScore.toFixed(2),
       r.mcqScore.toFixed(2),
       r.attendScore.toFixed(2),
       r.notesScore.toFixed(2),
       r.totalCE.toFixed(2),
+      `${pdfRunning.toFixed(2)} / ${(i + 1) * 20}`,
       new Date(r.createdAt).toLocaleDateString(),
-    ]),
-    headStyles:  { fillColor: [15, 23, 42], fontSize: 9.5, fontStyle: 'bold', halign: 'center' },
-    bodyStyles:  { fontSize: 8.5, textColor: [30, 41, 59], halign: 'center' },
-    columnStyles: { 0: { halign: 'left' } },
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 40,
+    head:   [['Period', 'Theory\n(/10)', 'MCQ\n(/5)', 'Attend.\n(/3)', 'Notes\n(/2)', 'Total CE\n(/20)', 'Cumulative\nCE', 'Date Added']],
+    body:   ceBodyPDF,
+    headStyles:  { fillColor: [15, 23, 42], fontSize: 9, fontStyle: 'bold', halign: 'center' },
+    bodyStyles:  { fontSize: 8, textColor: [30, 41, 59], halign: 'center' },
+    columnStyles: { 0: { halign: 'left' }, 6: { fontStyle: 'bold' } },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     tableLineColor: [226, 232, 240],
     tableLineWidth: 0.2,
@@ -591,6 +611,16 @@ export function exportCEPDF(records: CERow[], studentName: string) {
         if (val >= 15)      { data.cell.styles.textColor = [4, 120, 87]; data.cell.styles.fontStyle = 'bold'; }
         else if (val >= 10) { data.cell.styles.textColor = [180, 83, 9]; data.cell.styles.fontStyle = 'bold'; }
         else                { data.cell.styles.textColor = [185, 28, 28]; data.cell.styles.fontStyle = 'bold'; }
+      }
+      if (data.section === 'body' && data.column.index === 6) {
+        const parts = data.cell.text[0].split('/');
+        if (parts.length === 2) {
+          const pct = (parseFloat(parts[0]) / parseFloat(parts[1])) * 100;
+          if (pct >= 75)      data.cell.styles.textColor = [4, 120, 87];
+          else if (pct >= 50) data.cell.styles.textColor = [180, 83, 9];
+          else                data.cell.styles.textColor = [185, 28, 28];
+        }
+        data.cell.styles.fontStyle = 'bold';
       }
     },
   });
@@ -922,22 +952,28 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
   doc.setTextColor(15, 23, 42);
   doc.text('CE Records Summary', 14, 37);
 
-  const ceBody = students.flatMap((s) =>
-    s.ceRecords.map((r) => [
-      s.regNumber, s.fullName, `${MONTHS[r.month]} ${r.year}`,
-      r.theoryScore.toFixed(2), r.mcqScore.toFixed(2),
-      r.attendScore.toFixed(2), r.notesScore.toFixed(2), r.totalCE.toFixed(2),
-      new Date(r.createdAt).toLocaleDateString(),
-    ])
-  );
+  const ceBody = students.flatMap((s) => {
+    const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+    let cum = 0;
+    return sorted.map((r, i) => {
+      cum += r.totalCE;
+      return [
+        s.regNumber, s.fullName, `${MONTHS[r.month]} ${r.year}`,
+        r.theoryScore.toFixed(2), r.mcqScore.toFixed(2),
+        r.attendScore.toFixed(2), r.notesScore.toFixed(2), r.totalCE.toFixed(2),
+        `${cum.toFixed(2)} / ${(i + 1) * 20}`,
+        new Date(r.createdAt).toLocaleDateString(),
+      ];
+    });
+  });
 
   autoTable(doc, {
     startY: 41,
-    head:   [['Reg No.', 'Name', 'Period', 'Theory\n(/10)', 'MCQ\n(/5)', 'Attend.\n(/3)', 'Notes\n(/2)', 'Total\n(/20)', 'Date Added']],
-    body:   ceBody.length ? ceBody : [['—', 'No CE records', '', '', '', '', '', '', '']],
-    headStyles:  { fillColor: [15, 23, 42], fontSize: 8.5, fontStyle: 'bold', halign: 'center' },
-    bodyStyles:  { fontSize: 8, textColor: [30, 41, 59], halign: 'center' },
-    columnStyles: { 0: { halign: 'left', cellWidth: 22 }, 1: { halign: 'left', cellWidth: 38 } },
+    head:   [['Reg No.', 'Name', 'Period', 'Theory\n(/10)', 'MCQ\n(/5)', 'Attend.\n(/3)', 'Notes\n(/2)', 'Total\n(/20)', 'Cumulative\nCE', 'Date Added']],
+    body:   ceBody.length ? ceBody : [['—', 'No CE records', '', '', '', '', '', '', '', '']],
+    headStyles:  { fillColor: [15, 23, 42], fontSize: 8, fontStyle: 'bold', halign: 'center' },
+    bodyStyles:  { fontSize: 7.5, textColor: [30, 41, 59], halign: 'center' },
+    columnStyles: { 0: { halign: 'left', cellWidth: 20 }, 1: { halign: 'left', cellWidth: 34 }, 8: { fontStyle: 'bold' } },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     tableLineColor: [226, 232, 240],
     tableLineWidth: 0.2,
@@ -949,6 +985,16 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
           else if (val >= 10) { data.cell.styles.textColor = [180, 83, 9];  data.cell.styles.fontStyle = 'bold'; }
           else                { data.cell.styles.textColor = [185, 28, 28]; data.cell.styles.fontStyle = 'bold'; }
         }
+      }
+      if (data.section === 'body' && data.column.index === 8) {
+        const parts = data.cell.text[0].split('/');
+        if (parts.length === 2) {
+          const pct = (parseFloat(parts[0]) / parseFloat(parts[1])) * 100;
+          if (pct >= 75)      data.cell.styles.textColor = [4, 120, 87];
+          else if (pct >= 50) data.cell.styles.textColor = [180, 83, 9];
+          else                data.cell.styles.textColor = [185, 28, 28];
+        }
+        data.cell.styles.fontStyle = 'bold';
       }
     },
   });
