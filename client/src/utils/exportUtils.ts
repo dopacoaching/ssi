@@ -328,31 +328,31 @@ export function exportStudentsExcel(students: StudentRow[], batchName: string) {
 export function exportBatchExcel(students: BatchReportStudent[], batchName: string) {
   const wb = XLSX.utils.book_new();
 
-  // Sheet 1 – CE Records (cumulative resets per student)
-  const ceRows = students.flatMap((s) => {
-    const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-    let cum = 0;
-    return sorted.map((r, i) => {
-      cum += r.totalCE;
+  // Sheet 1 – CE Records: one row per student, Theory+MCQ combined
+  const ceRows = students
+    .filter((s) => s.ceRecords.length > 0)
+    .map((s) => {
+      const n = s.ceRecords.length;
+      const theoryMCQ   = parseFloat(s.ceRecords.reduce((a, r) => a + r.theoryScore + r.mcqScore, 0).toFixed(2));
+      const attendance  = parseFloat(s.ceRecords.reduce((a, r) => a + r.attendScore,  0).toFixed(2));
+      const notes       = parseFloat(s.ceRecords.reduce((a, r) => a + r.notesScore,   0).toFixed(2));
+      const totalCE     = parseFloat(s.ceRecords.reduce((a, r) => a + r.totalCE,      0).toFixed(2));
       return {
-        'Reg No.':         s.regNumber,
-        'Name':            s.fullName,
-        'Period':          `${MONTHS[r.month]} ${r.year}`,
-        'Theory (/10)':    parseFloat(r.theoryScore.toFixed(2)),
-        'MCQ (/5)':        parseFloat(r.mcqScore.toFixed(2)),
-        'Attendance (/3)': parseFloat(r.attendScore.toFixed(2)),
-        'Notes (/2)':      parseFloat(r.notesScore.toFixed(2)),
-        'Total CE (/20)':  parseFloat(r.totalCE.toFixed(2)),
-        'Cumulative CE':   `${cum.toFixed(2)} / ${(i + 1) * 20}`,
-        'Date Added':      new Date(r.createdAt).toLocaleDateString(),
+        'Reg No.':              s.regNumber,
+        'Name':                 s.fullName,
+        'Months':               n,
+        'Theory + MCQ (/15×n)': theoryMCQ,
+        'Attendance (/3×n)':    attendance,
+        'Notes (/2×n)':         notes,
+        'Total CE':             totalCE,
+        'Max CE':               n * 20,
       };
     });
-  });
   const wsCE = XLSX.utils.json_to_sheet(ceRows.length ? ceRows : [{ Note: 'No CE records' }]);
   if (ceRows.length) {
     applyAutoWidth(wsCE, ceRows);
     setRowHeight(wsCE, ceRows.length);
-    applyStyles(wsCE, ceRows, { firstColLeft: true, colorRules: [{ type: 'ce', colIndex: 7 }] });
+    applyStyles(wsCE, ceRows, { firstColLeft: true, colorRules: [{ type: 'ce', colIndex: 6 }] });
   }
   XLSX.utils.book_append_sheet(wb, wsCE, 'CE Records');
 
@@ -952,49 +952,40 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
   doc.setTextColor(15, 23, 42);
   doc.text('CE Records Summary', 14, 37);
 
-  const ceBody = students.flatMap((s) => {
-    const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-    let cum = 0;
-    return sorted.map((r, i) => {
-      cum += r.totalCE;
-      return [
-        s.regNumber, s.fullName, `${MONTHS[r.month]} ${r.year}`,
-        r.theoryScore.toFixed(2), r.mcqScore.toFixed(2),
-        r.attendScore.toFixed(2), r.notesScore.toFixed(2), r.totalCE.toFixed(2),
-        `${cum.toFixed(2)} / ${(i + 1) * 20}`,
-        new Date(r.createdAt).toLocaleDateString(),
-      ];
+  // CE table: one row per student, Theory+MCQ combined, totals across all months
+  const ceBody = students
+    .filter((s) => s.ceRecords.length > 0)
+    .map((s) => {
+      const n = s.ceRecords.length;
+      const theoryMCQ  = s.ceRecords.reduce((a, r) => a + r.theoryScore + r.mcqScore, 0).toFixed(2);
+      const attendance = s.ceRecords.reduce((a, r) => a + r.attendScore,  0).toFixed(2);
+      const notes      = s.ceRecords.reduce((a, r) => a + r.notesScore,   0).toFixed(2);
+      const totalCE    = s.ceRecords.reduce((a, r) => a + r.totalCE,      0).toFixed(2);
+      return [s.regNumber, s.fullName, n, theoryMCQ, attendance, notes, totalCE, n * 20];
     });
-  });
 
   autoTable(doc, {
     startY: 41,
-    head:   [['Reg No.', 'Name', 'Period', 'Theory\n(/10)', 'MCQ\n(/5)', 'Attend.\n(/3)', 'Notes\n(/2)', 'Total\n(/20)', 'Cumulative\nCE', 'Date Added']],
-    body:   ceBody.length ? ceBody : [['—', 'No CE records', '', '', '', '', '', '', '', '']],
-    headStyles:  { fillColor: [15, 23, 42], fontSize: 8, fontStyle: 'bold', halign: 'center' },
-    bodyStyles:  { fontSize: 7.5, textColor: [30, 41, 59], halign: 'center' },
-    columnStyles: { 0: { halign: 'left', cellWidth: 20 }, 1: { halign: 'left', cellWidth: 34 }, 8: { fontStyle: 'bold' } },
+    head:   [['Reg No.', 'Name', 'Months', 'Theory+MCQ\n(/15×n)', 'Attend.\n(/3×n)', 'Notes\n(/2×n)', 'Total CE', 'Max CE']],
+    body:   ceBody.length ? ceBody : [['—', 'No CE records', '', '', '', '', '', '']],
+    headStyles:  { fillColor: [15, 23, 42], fontSize: 8.5, fontStyle: 'bold', halign: 'center' },
+    bodyStyles:  { fontSize: 8, textColor: [30, 41, 59], halign: 'center' },
+    columnStyles: { 0: { halign: 'left', cellWidth: 22 }, 1: { halign: 'left', cellWidth: 42 } },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     tableLineColor: [226, 232, 240],
     tableLineWidth: 0.2,
     didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 7) {
-        const val = parseFloat(data.cell.text[0]);
-        if (!isNaN(val)) {
-          if (val >= 15)      { data.cell.styles.textColor = [4, 120, 87];  data.cell.styles.fontStyle = 'bold'; }
-          else if (val >= 10) { data.cell.styles.textColor = [180, 83, 9];  data.cell.styles.fontStyle = 'bold'; }
+      if (data.section === 'body' && data.column.index === 6) {
+        const total = parseFloat(data.cell.text[0]);
+        // colour by avg CE per month (total / months)
+        const monthsCell = (data.row.raw as any[])[2];
+        const months = parseFloat(String(monthsCell)) || 1;
+        const avg = total / months;
+        if (!isNaN(avg)) {
+          if (avg >= 15)      { data.cell.styles.textColor = [4, 120, 87];  data.cell.styles.fontStyle = 'bold'; }
+          else if (avg >= 10) { data.cell.styles.textColor = [180, 83, 9];  data.cell.styles.fontStyle = 'bold'; }
           else                { data.cell.styles.textColor = [185, 28, 28]; data.cell.styles.fontStyle = 'bold'; }
         }
-      }
-      if (data.section === 'body' && data.column.index === 8) {
-        const parts = data.cell.text[0].split('/');
-        if (parts.length === 2) {
-          const pct = (parseFloat(parts[0]) / parseFloat(parts[1])) * 100;
-          if (pct >= 75)      data.cell.styles.textColor = [4, 120, 87];
-          else if (pct >= 50) data.cell.styles.textColor = [180, 83, 9];
-          else                data.cell.styles.textColor = [185, 28, 28];
-        }
-        data.cell.styles.fontStyle = 'bold';
       }
     },
   });
