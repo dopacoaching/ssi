@@ -63,7 +63,7 @@ export default function Navbar({ onMenuToggle }: Props) {
           </svg>
         </button>
         <Link to="/" className="flex items-center gap-2.5">
-          <img src="/dopa-logo.png" alt="DOPA" className="h-8 w-8 object-cover rounded-xl" />
+          <img src="/dopa-logo.png" alt="DOPA" className="h-8 w-8 object-contain rounded-xl" />
           <span className="hidden md:block text-sm font-semibold text-gray-600 dark:text-gray-300 tracking-tight">
             Student Success Index
           </span>
