@@ -5,6 +5,7 @@ import { RootState } from '../store';
 import { useAuth } from '../hooks/useAuth';
 import { useStudents, Student } from '../hooks/useStudents';
 import ThemeToggle from './ThemeToggle';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 interface Props { onMenuToggle?: () => void }
 
@@ -20,6 +21,7 @@ export default function Navbar({ onMenuToggle }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const isStaff = user?.role === 'ADMIN' || user?.role === 'TEACHER';
+  const { canInstall, install } = usePWAInstall();
 
   const doSearch = useCallback(async (q: string) => {
     if (q.trim().length < 2) { setResults([]); setOpen(false); return; }
@@ -103,6 +105,19 @@ export default function Navbar({ onMenuToggle }: Props) {
       )}
 
       <div className="flex items-center gap-1 sm:gap-2">
+        {canInstall && (
+          <button
+            onClick={install}
+            className="lg:hidden flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl transition-colors"
+            title="Install app"
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d="M12 16V4M8 12l4 4 4-4"/>
+              <path d="M4 20h16"/>
+            </svg>
+            Install
+          </button>
+        )}
         <span className="text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:block mr-1">{user?.name}</span>
         <span className="text-xs bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-full font-medium">
           {user?.role}
