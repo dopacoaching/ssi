@@ -21,7 +21,8 @@ export default function Navbar({ onMenuToggle }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const isStaff = user?.role === 'ADMIN' || user?.role === 'TEACHER';
-  const { canInstall, install } = usePWAInstall();
+  const { showIOS, showAndroid, installAndroid } = usePWAInstall();
+  const [iosModal, setIosModal] = useState(false);
 
   const doSearch = useCallback(async (q: string) => {
     if (q.trim().length < 2) { setResults([]); setOpen(false); return; }
@@ -105,10 +106,10 @@ export default function Navbar({ onMenuToggle }: Props) {
       )}
 
       <div className="flex items-center gap-1 sm:gap-2">
-        {canInstall && (
+        {(showAndroid || showIOS) && (
           <button
-            onClick={install}
-            className="lg:hidden flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl transition-colors"
+            onClick={showAndroid ? installAndroid : () => setIosModal(true)}
+            className="lg:hidden flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white px-3 py-1.5 rounded-xl transition-colors"
             title="Install app"
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -117,6 +118,59 @@ export default function Navbar({ onMenuToggle }: Props) {
             </svg>
             Install
           </button>
+        )}
+
+        {/* iOS install instructions modal */}
+        {iosModal && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6" onClick={() => setIosModal(false)}>
+            <div className="absolute inset-0 bg-black/50" />
+            <div
+              className="relative w-full max-w-sm bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Logo + title */}
+              <div className="flex items-center gap-3 mb-5">
+                <img src="/dopa-logo.png" alt="DOPA" className="w-12 h-12 rounded-2xl object-contain" />
+                <div>
+                  <p className="font-bold text-gray-900 dark:text-gray-100 text-base">Install DOPA SSI</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Add to your Home Screen</p>
+                </div>
+              </div>
+
+              {/* Steps */}
+              <ol className="space-y-4">
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center">1</span>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-700 dark:text-gray-200">Tap the <strong>Share</strong> button at the bottom of Safari</p>
+                    <div className="mt-1.5 inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-lg">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                        <polyline points="16 6 12 2 8 6"/>
+                        <line x1="12" y1="2" x2="12" y2="15"/>
+                      </svg>
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Share</span>
+                    </div>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center">2</span>
+                  <p className="text-sm text-gray-700 dark:text-gray-200">Scroll down and tap <strong>Add to Home Screen</strong></p>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center">3</span>
+                  <p className="text-sm text-gray-700 dark:text-gray-200">Tap <strong>Add</strong> in the top-right corner</p>
+                </li>
+              </ol>
+
+              <button
+                onClick={() => setIosModal(false)}
+                className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-2xl text-sm transition-colors"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
         )}
         <span className="text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:block mr-1">{user?.name}</span>
         <span className="text-xs bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-full font-medium">

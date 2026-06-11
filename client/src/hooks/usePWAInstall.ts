@@ -5,27 +5,48 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+function isIOSDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isIOSSafari() {
+  return isIOSDevice() && /safari/i.test(navigator.userAgent) && !/crios|fxios|opios|mercury/i.test(navigator.userAgent);
+}
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+}
+
 export function usePWAInstall() {
-  const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
+  const [androidPrompt, setAndroidPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installed, setInstalled]         = useState(isStandalone);
+
+  const ios      = isIOSSafari();
+  const showIOS  = ios && !installed;
+  const showAndroid = !!androidPrompt && !installed;
 
   useEffect(() => {
+    if (installed) return;
     const handler = (e: Event) => {
       e.preventDefault();
-      setPrompt(e as BeforeInstallPromptEvent);
+      setAndroidPrompt(e as BeforeInstallPromptEvent);
     };
     window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => { setInstalled(true); setPrompt(null); });
+    window.addEventListener('appinstalled', () => { setInstalled(true); setAndroidPrompt(null); });
     return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+  }, [installed]);
 
-  async function install() {
-    if (!prompt) return;
-    await prompt.prompt();
-    const { outcome } = await prompt.userChoice;
+  async function installAndroid() {
+    if (!androidPrompt) return;
+    await androidPrompt.prompt();
+    const { outcome } = await androidPrompt.userChoice;
     if (outcome === 'accepted') setInstalled(true);
-    setPrompt(null);
+    setAndroidPrompt(null);
   }
 
-  return { canInstall: !!prompt && !installed, install };
+  return {
+    showIOS,
+    showAndroid,
+    installAndroid,
+  };
 }
