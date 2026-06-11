@@ -10,7 +10,7 @@ export interface BatchAnalytics {
   batch: { id: string; name: string };
   studentCount: number;
   ceMonthly: { month: number; year: number; avgCE: number; avgAttendance: number; studentCount: number }[];
-  subjectAverages: { physics: number; chem: number; math: number; bio: number; lang1: number; lang2: number };
+  subjectAverages: { physics: number; chem: number; math: number; bio: number; lang1: number; lang2: number; psychology: number };
   topStudents: { id: string; fullName: string; regNumber: string; avgCE: number }[];
   atRisk: { id: string; fullName: string; regNumber: string; avgCE: number; avgAttendance: number }[];
 }

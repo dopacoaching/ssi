@@ -6,6 +6,15 @@ const findWeeklyByStudent = (studentId) =>
     orderBy: { weekDate: 'desc' },
   });
 
+const findWeeklyByStudentAndMonth = (studentId, month, year) =>
+  prisma.weeklyTest.findMany({
+    where: {
+      studentId,
+      weekDate: { gte: new Date(year, month - 1, 1), lt: new Date(year, month, 1) },
+    },
+    orderBy: { weekDate: 'desc' },
+  });
+
 const createWeekly = (data) => prisma.weeklyTest.create({ data });
 
 const findWeeklyById = (id) => prisma.weeklyTest.findUnique({ where: { id } });
@@ -23,6 +32,12 @@ const findMonthlyByStudent = (studentId) =>
     orderBy: [{ year: 'desc' }, { month: 'desc' }],
   });
 
+const findMonthlyByStudentAndMonth = (studentId, month, year) =>
+  prisma.monthlyTest.findMany({
+    where: { studentId, month, year },
+    orderBy: [{ year: 'desc' }, { month: 'desc' }],
+  });
+
 const createMonthly = (data) => prisma.monthlyTest.create({ data });
 
 const findMonthlyById = (id) => prisma.monthlyTest.findUnique({ where: { id } });
@@ -35,6 +50,6 @@ const findMonthlyDuplicate = (studentId, subject, testType, month, year) =>
   prisma.monthlyTest.findFirst({ where: { studentId, subject, testType, month, year } });
 
 module.exports = {
-  findWeeklyByStudent, createWeekly, findWeeklyDuplicate, findWeeklyById, updateWeekly, deleteWeekly,
-  findMonthlyByStudent, createMonthly, findMonthlyDuplicate, findMonthlyById, updateMonthly, deleteMonthly,
+  findWeeklyByStudent, findWeeklyByStudentAndMonth, createWeekly, findWeeklyDuplicate, findWeeklyById, updateWeekly, deleteWeekly,
+  findMonthlyByStudent, findMonthlyByStudentAndMonth, createMonthly, findMonthlyDuplicate, findMonthlyById, updateMonthly, deleteMonthly,
 };

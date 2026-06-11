@@ -34,17 +34,11 @@ async function guardStudent(req, res) {
 
 async function aggregateTestMarks(studentId, month, year) {
   const [weekly, monthly] = await Promise.all([
-    testModel.findWeeklyByStudent(studentId),
-    testModel.findMonthlyByStudent(studentId),
+    testModel.findWeeklyByStudentAndMonth(studentId, month, year),
+    testModel.findMonthlyByStudentAndMonth(studentId, month, year),
   ]);
 
-  const inMonth = [
-    ...weekly.filter(t => {
-      const d = new Date(t.weekDate);
-      return (d.getMonth() + 1) === month && d.getFullYear() === year;
-    }),
-    ...monthly.filter(t => t.month === month && t.year === year),
-  ];
+  const inMonth = [...weekly, ...monthly];
 
   let physicsMarks = 0, physicsMax = 0;
   let chemMarks = 0,    chemMax    = 0;

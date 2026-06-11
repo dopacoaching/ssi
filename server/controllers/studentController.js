@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const studentModel = require('../models/studentModel');
 const { logAudit } = require('../utils/audit');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
@@ -35,7 +36,6 @@ async function create(req, res) {
     return forbidden(res);
   }
 
-  const bcrypt = require('bcryptjs');
   const hashedPassword = password ? await bcrypt.hash(password, 12) : null;
 
   const student = await studentModel.create({
@@ -76,7 +76,6 @@ async function update(req, res) {
   if (regNumber      !== undefined) updateData.regNumber      = regNumber;
   
   if (password) {
-    const bcrypt = require('bcryptjs');
     updateData.password = await bcrypt.hash(password, 12);
   }
 
