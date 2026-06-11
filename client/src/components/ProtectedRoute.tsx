@@ -11,7 +11,10 @@ export default function ProtectedRoute({ children, role }: Props) {
   const { user, checked } = useSelector((s: RootState) => s.auth);
 
   if (!checked) return <div className="flex h-screen items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 text-sm">Loading…</div>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    return <Navigate to={standalone ? '/student/login' : '/login'} replace />;
+  }
 
   if (role) {
     const roles = Array.isArray(role) ? role : [role];

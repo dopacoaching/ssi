@@ -2,7 +2,7 @@
   "name": "DOPA Student Success Index",
   "short_name": "DOPA SSI",
   "description": "Student performance tracking and CE evaluation platform",
-  "start_url": "/",
+  "start_url": "/student/login",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
