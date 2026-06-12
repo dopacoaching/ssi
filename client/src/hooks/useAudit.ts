@@ -24,12 +24,14 @@ export interface AuditFilters {
 }
 
 export function useAudit() {
-  const [items, setItems]   = useState<AuditEntry[]>([]);
-  const [total, setTotal]   = useState(0);
+  const [items, setItems]     = useState<AuditEntry[]>([]);
+  const [total, setTotal]     = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
   const fetch = useCallback(async (filters: AuditFilters = {}) => {
     setLoading(true);
+    setError(null);
     try {
       const params: Record<string, string | number> = {};
       if (filters.page)   params.page   = filters.page;
@@ -42,10 +44,12 @@ export function useAudit() {
       const res = await api.get('/admin/audit', { params });
       setItems(res.data.data.items);
       setTotal(res.data.data.total);
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Failed to load audit log');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  return { items, total, loading, fetch };
+  return { items, total, loading, error, fetch };
 }

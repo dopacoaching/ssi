@@ -30,7 +30,7 @@ function fmt(iso: string) {
 }
 
 export default function AuditLogPage() {
-  const { items, total, loading, fetch } = useAudit();
+  const { items, total, loading, error, fetch } = useAudit();
 
   const [page, setPage]         = useState(1);
   const [search, setSearch]     = useState('');
@@ -105,6 +105,12 @@ export default function AuditLogPage() {
             )}
           </div>
         </div>
+
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm px-4 py-3 rounded-xl mb-4">
+            {error}
+          </div>
+        )}
 
         {/* Table */}
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
