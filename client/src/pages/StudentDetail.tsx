@@ -13,6 +13,7 @@ import StudentPortal from './StudentPortal';
 import ConfirmModal from '../components/ConfirmModal';
 import EmptyState from '../components/EmptyState';
 const loadExportUtils = () => import('../utils/exportUtils');
+import MonthMultiSelect from '../components/MonthMultiSelect';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -55,18 +56,18 @@ export default function StudentDetail() {
   const [showWForm, setShowWForm] = useState(false);
   const [wForm, setWForm] = useState({ weekDate: '', testType: 'Theory', subject: 'Physics', chapter: '', marks: '', maxMarks: '100' });
   const [wSaving, setWSaving] = useState(false);
-  const [wFilter, setWFilter] = useState({ month: '', year: '' });
+  const [wFilter, setWFilter] = useState<{ months: number[]; year: string }>({ months: [], year: '' });
 
   const [showMForm, setShowMForm] = useState(false);
   const [mForm, setMForm] = useState({ month: '', year: new Date().getFullYear().toString(), testType: 'Theory', subject: 'Physics', marks: '', maxMarks: '100' });
   const [mSaving, setMSaving] = useState(false);
-  const [mFilter, setMFilter] = useState({ month: '', year: '' });
+  const [mFilter, setMFilter] = useState<{ months: number[]; year: string }>({ months: [], year: '' });
 
   const [showRForm, setShowRForm] = useState(false);
   const [rForm, setRForm] = useState({ category: '', text: '', isFlagged: false });
   const [rSaving, setRSaving] = useState(false);
 
-  const [ceFilter, setCEFilter] = useState({ month: '', year: '' });
+  const [ceFilter, setCEFilter] = useState<{ months: number[]; year: string }>({ months: [], year: '' });
 
   const [editingWId, setEditingWId] = useState<string | null>(null);
   const [editWForm, setEditWForm]   = useState({ marks: '', maxMarks: '', chapter: '' });
@@ -296,22 +297,22 @@ export default function StudentDetail() {
 
   const filteredWeekly = useMemo(() => weekly.filter((t) => {
     const d = new Date(t.weekDate);
-    if (wFilter.month && d.getMonth() + 1 !== Number(wFilter.month)) return false;
-    if (wFilter.year  && d.getFullYear()  !== Number(wFilter.year))  return false;
+    if (wFilter.months.length > 0 && !wFilter.months.includes(d.getMonth() + 1)) return false;
+    if (wFilter.year && d.getFullYear() !== Number(wFilter.year)) return false;
     return true;
-  }), [weekly, wFilter.month, wFilter.year]);
+  }), [weekly, wFilter.months, wFilter.year]);
 
   const filteredMonthly = useMemo(() => monthly.filter((t) => {
-    if (mFilter.month && t.month !== Number(mFilter.month)) return false;
-    if (mFilter.year  && t.year  !== Number(mFilter.year))  return false;
+    if (mFilter.months.length > 0 && !mFilter.months.includes(t.month)) return false;
+    if (mFilter.year && t.year !== Number(mFilter.year)) return false;
     return true;
-  }), [monthly, mFilter.month, mFilter.year]);
+  }), [monthly, mFilter.months, mFilter.year]);
 
   const filteredCE = useMemo(() => records.filter((r) => {
-    if (ceFilter.month && r.month !== Number(ceFilter.month)) return false;
-    if (ceFilter.year  && r.year  !== Number(ceFilter.year))  return false;
+    if (ceFilter.months.length > 0 && !ceFilter.months.includes(r.month)) return false;
+    if (ceFilter.year && r.year !== Number(ceFilter.year)) return false;
     return true;
-  }), [records, ceFilter.month, ceFilter.year]);
+  }), [records, ceFilter.months, ceFilter.year]);
 
   const filteredWeeklyTheory  = useMemo(() => filteredWeekly.filter(t => t.testType === 'Theory'), [filteredWeekly]);
   const filteredWeeklyMCQ     = useMemo(() => filteredWeekly.filter(t => t.testType === 'MCQ'),    [filteredWeekly]);
@@ -323,9 +324,9 @@ export default function StudentDetail() {
   const monthlyTheory = useMemo(() => monthly.filter(t => t.testType === 'Theory'), [monthly]);
   const monthlyMCQ    = useMemo(() => monthly.filter(t => t.testType === 'MCQ'),    [monthly]);
 
-  function filterLabel(month: string, year: string) {
-    if (!month && !year) return '';
-    const m = month ? MONTHS[Number(month)] : '';
+  function filterLabel(months: number[], year: string) {
+    if (months.length === 0 && !year) return '';
+    const m = months.length > 0 ? months.map(x => MONTHS[x]).join('-') : '';
     return [m, year].filter(Boolean).join('_');
   }
 
@@ -773,22 +774,20 @@ export default function StudentDetail() {
           <div>
             <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
               <div className="flex flex-wrap gap-2 items-center">
-                <select value={ceFilter.month} onChange={(e) => setCEFilter({ ...ceFilter, month: e.target.value })}
-                  className={filterSelectCls}>
-                  <option value="">All months</option>
-                  {MONTHS.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-                </select>
-                <input type="number" placeholder="Year" value={ceFilter.year}
-                  onChange={(e) => setCEFilter({ ...ceFilter, year: e.target.value })}
-                  className={`${filterSelectCls} w-24`} />
-                {(ceFilter.month || ceFilter.year) && (
-                  <button onClick={() => setCEFilter({ month: '', year: '' })} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-2">Clear</button>
+                <MonthMultiSelect
+                  selectedMonths={ceFilter.months}
+                  onMonthsChange={(months) => setCEFilter({ ...ceFilter, months })}
+                  year={ceFilter.year}
+                  onYearChange={(year) => setCEFilter({ ...ceFilter, year })}
+                />
+                {(ceFilter.months.length > 0 || ceFilter.year) && (
+                  <button onClick={() => setCEFilter({ months: [], year: '' })} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-2">Clear</button>
                 )}
                 {user?.role === 'ADMIN' && filteredCE.length > 0 && (
                   <>
-                    <button onClick={async () => { const { exportCEExcel } = await loadExportUtils(); exportCEExcel(filteredCE, `${studentName}${filterLabel(ceFilter.month, ceFilter.year) ? '_' + filterLabel(ceFilter.month, ceFilter.year) : ''}`); }}
+                    <button onClick={async () => { const { exportCEExcel } = await loadExportUtils(); exportCEExcel(filteredCE, `${studentName}${filterLabel(ceFilter.months, ceFilter.year) ? '_' + filterLabel(ceFilter.months, ceFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ Excel</button>
-                    <button onClick={async () => { const { exportCEPDF } = await loadExportUtils(); exportCEPDF(filteredCE, `${studentName}${filterLabel(ceFilter.month, ceFilter.year) ? '_' + filterLabel(ceFilter.month, ceFilter.year) : ''}`); }}
+                    <button onClick={async () => { const { exportCEPDF } = await loadExportUtils(); exportCEPDF(filteredCE, `${studentName}${filterLabel(ceFilter.months, ceFilter.year) ? '_' + filterLabel(ceFilter.months, ceFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ PDF</button>
                   </>
                 )}
@@ -883,16 +882,14 @@ export default function StudentDetail() {
           <div>
             <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
               <div className="flex flex-wrap gap-2 items-center">
-                <select value={wFilter.month} onChange={(e) => setWFilter({ ...wFilter, month: e.target.value })}
-                  className={filterSelectCls}>
-                  <option value="">All months</option>
-                  {MONTHS.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-                </select>
-                <input type="number" placeholder="Year" value={wFilter.year}
-                  onChange={(e) => setWFilter({ ...wFilter, year: e.target.value })}
-                  className={`${filterSelectCls} w-24`} />
-                {(wFilter.month || wFilter.year) && (
-                  <button onClick={() => setWFilter({ month: '', year: '' })} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-2">Clear</button>
+                <MonthMultiSelect
+                  selectedMonths={wFilter.months}
+                  onMonthsChange={(months) => setWFilter({ ...wFilter, months })}
+                  year={wFilter.year}
+                  onYearChange={(year) => setWFilter({ ...wFilter, year })}
+                />
+                {(wFilter.months.length > 0 || wFilter.year) && (
+                  <button onClick={() => setWFilter({ months: [], year: '' })} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-2">Clear</button>
                 )}
               </div>
               {isTeacher && (
@@ -966,9 +963,9 @@ export default function StudentDetail() {
               <div>
                 {user?.role === 'ADMIN' && filteredWeekly.length > 0 && (
                   <div className="flex justify-end gap-2 mb-2">
-                    <button onClick={async () => { const { exportWeeklyExcel } = await loadExportUtils(); exportWeeklyExcel(filteredWeekly, `${studentName}${filterLabel(wFilter.month, wFilter.year) ? '_' + filterLabel(wFilter.month, wFilter.year) : ''}`); }}
+                    <button onClick={async () => { const { exportWeeklyExcel } = await loadExportUtils(); exportWeeklyExcel(filteredWeekly, `${studentName}${filterLabel(wFilter.months, wFilter.year) ? '_' + filterLabel(wFilter.months, wFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ Excel</button>
-                    <button onClick={async () => { const { exportWeeklyPDF } = await loadExportUtils(); exportWeeklyPDF(filteredWeekly, `${studentName}${filterLabel(wFilter.month, wFilter.year) ? '_' + filterLabel(wFilter.month, wFilter.year) : ''}`); }}
+                    <button onClick={async () => { const { exportWeeklyPDF } = await loadExportUtils(); exportWeeklyPDF(filteredWeekly, `${studentName}${filterLabel(wFilter.months, wFilter.year) ? '_' + filterLabel(wFilter.months, wFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ PDF</button>
                   </div>
                 )}
@@ -1248,16 +1245,14 @@ export default function StudentDetail() {
           <div>
             <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
               <div className="flex flex-wrap gap-2 items-center">
-                <select value={mFilter.month} onChange={(e) => setMFilter({ ...mFilter, month: e.target.value })}
-                  className={filterSelectCls}>
-                  <option value="">All months</option>
-                  {MONTHS.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-                </select>
-                <input type="number" placeholder="Year" value={mFilter.year}
-                  onChange={(e) => setMFilter({ ...mFilter, year: e.target.value })}
-                  className={`${filterSelectCls} w-24`} />
-                {(mFilter.month || mFilter.year) && (
-                  <button onClick={() => setMFilter({ month: '', year: '' })} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-2">Clear</button>
+                <MonthMultiSelect
+                  selectedMonths={mFilter.months}
+                  onMonthsChange={(months) => setMFilter({ ...mFilter, months })}
+                  year={mFilter.year}
+                  onYearChange={(year) => setMFilter({ ...mFilter, year })}
+                />
+                {(mFilter.months.length > 0 || mFilter.year) && (
+                  <button onClick={() => setMFilter({ months: [], year: '' })} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-2">Clear</button>
                 )}
               </div>
               {isTeacher && (
@@ -1329,9 +1324,9 @@ export default function StudentDetail() {
               <div>
                 {user?.role === 'ADMIN' && filteredMonthly.length > 0 && (
                   <div className="flex justify-end gap-2 mb-2">
-                    <button onClick={async () => { const { exportMonthlyExcel } = await loadExportUtils(); exportMonthlyExcel(filteredMonthly, `${studentName}${filterLabel(mFilter.month, mFilter.year) ? '_' + filterLabel(mFilter.month, mFilter.year) : ''}`); }}
+                    <button onClick={async () => { const { exportMonthlyExcel } = await loadExportUtils(); exportMonthlyExcel(filteredMonthly, `${studentName}${filterLabel(mFilter.months, mFilter.year) ? '_' + filterLabel(mFilter.months, mFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ Excel</button>
-                    <button onClick={async () => { const { exportMonthlyPDF } = await loadExportUtils(); exportMonthlyPDF(filteredMonthly, `${studentName}${filterLabel(mFilter.month, mFilter.year) ? '_' + filterLabel(mFilter.month, mFilter.year) : ''}`); }}
+                    <button onClick={async () => { const { exportMonthlyPDF } = await loadExportUtils(); exportMonthlyPDF(filteredMonthly, `${studentName}${filterLabel(mFilter.months, mFilter.year) ? '_' + filterLabel(mFilter.months, mFilter.year) : ''}`); }}
                       className={exportBtnCls}>↓ PDF</button>
                   </div>
                 )}

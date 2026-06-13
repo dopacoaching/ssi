@@ -10,6 +10,7 @@ import Layout from '../components/Layout';
 import EmptyState from '../components/EmptyState';
 import api from '../utils/api';
 import type { BatchReportStudent } from '../utils/exportUtils';
+import MonthMultiSelect from '../components/MonthMultiSelect';
 
 const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const inputCls = 'border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400';
@@ -29,8 +30,8 @@ export default function Students() {
   const [photoPreview, setPhotoPreview] = useState('');
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [exportMonth, setExportMonth] = useState<string>('');
-  const [exportYear, setExportYear] = useState<number>(new Date().getFullYear());
+  const [exportMonths, setExportMonths] = useState<number[]>([]);
+  const [exportYear, setExportYear] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('default');
 
   const [batchApprovals, setBatchApprovals] = useState<{ month: number; year: number }[]>([]);
@@ -155,14 +156,14 @@ export default function Students() {
       return bAvg - aAvg;
     }
     if (sortBy === 'performanceMonth') {
-      const mNum = exportMonth !== '' ? Number(exportMonth) : new Date().getMonth() + 1;
-      const yNum = exportMonth !== '' ? exportYear : new Date().getFullYear();
+      const mNum = exportMonths.length === 1 ? exportMonths[0] : new Date().getMonth() + 1;
+      const yNum = exportYear ? Number(exportYear) : new Date().getFullYear();
       const aRec = (a.ceRecords ?? []).find(r => r.month === mNum && r.year === yNum);
       const bRec = (b.ceRecords ?? []).find(r => r.month === mNum && r.year === yNum);
       return (bRec ? bRec.totalCE : -1) - (aRec ? aRec.totalCE : -1);
     }
     return 0;
-  }), [students, sortBy, exportMonth, exportYear]);
+  }), [students, sortBy, exportMonths, exportYear]);
 
   const visible = user?.role === 'ADMIN'
     ? batches
@@ -178,20 +179,26 @@ export default function Students() {
       let finalStudents = allStudents;
       let suffix = '';
       
-      if (exportMonth !== '') {
-        const mNum = Number(exportMonth);
-        suffix = `_${MONTHS[mNum]}_${exportYear}`;
-        
+      if (exportMonths.length > 0) {
+        const yNum = exportYear ? Number(exportYear) : null;
+        suffix = `_${exportMonths.map(m => MONTHS[m]).join('-')}${yNum ? '_' + yNum : ''}`;
+
         finalStudents = allStudents.map((student) => {
           const filteredWeekly = student.weeklyTests.filter((t) => {
             const d = new Date(t.weekDate);
-            return d.getMonth() + 1 === mNum && d.getFullYear() === exportYear;
+            const monthMatch = exportMonths.includes(d.getMonth() + 1);
+            const yearMatch = !yNum || d.getFullYear() === yNum;
+            return monthMatch && yearMatch;
           });
           const filteredMonthly = student.monthlyTests.filter((t) => {
-            return t.month === mNum && t.year === exportYear;
+            const monthMatch = exportMonths.includes(t.month);
+            const yearMatch = !yNum || t.year === yNum;
+            return monthMatch && yearMatch;
           });
           const filteredCE = student.ceRecords.filter((r) => {
-            return r.month === mNum && r.year === exportYear;
+            const monthMatch = exportMonths.includes(r.month);
+            const yearMatch = !yNum || r.year === yNum;
+            return monthMatch && yearMatch;
           });
           return {
             ...student,
@@ -223,8 +230,8 @@ export default function Students() {
             return bAvg - aAvg; // Descending
           }
           if (sortBy === 'performanceMonth') {
-            const mNum = exportMonth !== '' ? Number(exportMonth) : new Date().getMonth() + 1;
-            const yNum = exportMonth !== '' ? exportYear : new Date().getFullYear();
+            const mNum = exportMonths.length === 1 ? exportMonths[0] : new Date().getMonth() + 1;
+            const yNum = exportYear ? Number(exportYear) : new Date().getFullYear();
 
             const aRec = (a.ceRecords ?? []).find((r) => r.month === mNum && r.year === yNum);
             const bRec = (b.ceRecords ?? []).find((r) => r.month === mNum && r.year === yNum);
@@ -428,32 +435,17 @@ export default function Students() {
           <div className="flex flex-wrap items-center gap-3 mb-5">
             {user?.role === 'ADMIN' && (
               <>
-                {/* Custom Month Filter Control Card */}
+                {/* Multi-Month Export Filter */}
                 <div className="flex flex-wrap items-center gap-2 border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl px-3.5 py-2">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Export Coverage:</span>
-                  <select
-                    value={exportMonth}
-                    onChange={(e) => setExportMonth(e.target.value)}
-                    className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 font-medium"
-                  >
-                    <option value="">All Months</option>
-                    {Array.from({ length: 12 }, (_, i) => (
-                      <option key={i + 1} value={i + 1}>{MONTHS[i + 1]}</option>
-                    ))}
-                  </select>
-                  {exportMonth && (
-                    <select
-                      value={exportYear}
-                      onChange={(e) => setExportYear(Number(e.target.value))}
-                      className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 font-medium"
-                    >
-                      {Array.from({ length: 5 }, (_, i) => {
-                        const yr = new Date().getFullYear() - i;
-                        return <option key={yr} value={yr}>{yr}</option>;
-                      })}
-                    </select>
-                  )}
-                  
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Export:</span>
+                  <MonthMultiSelect
+                    selectedMonths={exportMonths}
+                    onMonthsChange={setExportMonths}
+                    year={exportYear}
+                    onYearChange={setExportYear}
+                    placeholder="All Months"
+                  />
+
                   <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 mx-1.5" />
 
                   <button
@@ -596,7 +588,7 @@ export default function Students() {
                       <option value="name">Name (A to Z)</option>
                       <option value="reg">Register Number (Numerical)</option>
                       <option value="performanceAll">Highest Performer (All Months)</option>
-                      <option value="performanceMonth">Highest Performer ({exportMonth !== '' ? `${MONTHS[Number(exportMonth)]} ${exportYear}` : 'Current Month'})</option>
+                      <option value="performanceMonth">Highest Performer ({exportMonths.length === 1 ? `${MONTHS[exportMonths[0]]}${exportYear ? ' ' + exportYear : ''}` : 'Current Month'})</option>
                     </select>
                   </div>
                 </div>
