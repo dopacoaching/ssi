@@ -1,13 +1,15 @@
 function computeTheoryScore(data) {
-  const hasPsychology = data.psychologyMax > 0;
+  const hasPsychology     = data.psychologyMax > 0;
+  const hasComputerScience = data.computerScienceMax > 0;
   const subjects = [
     { marks: data.physicsMarks, max: data.physicsMax, weight: 2 },
     { marks: data.chemMarks,    max: data.chemMax,    weight: 2 },
     { marks: !hasPsychology ? data.mathMarks : 0, max: !hasPsychology ? data.mathMax : 0, weight: 2 },
-    { marks: data.bioMarks,     max: data.bioMax,     weight: 2 },
+    { marks: !hasComputerScience ? data.bioMarks : 0, max: !hasComputerScience ? data.bioMax : 0, weight: 2 },
     { marks: data.lang1Marks,   max: data.lang1Max,   weight: 1 },
     { marks: data.lang2Marks,   max: data.lang2Max,   weight: 1 },
     { marks: hasPsychology ? data.psychologyMarks : 0, max: hasPsychology ? data.psychologyMax : 0, weight: 2 },
+    { marks: hasComputerScience ? data.computerScienceMarks : 0, max: hasComputerScience ? data.computerScienceMax : 0, weight: 2 },
   ];
   return subjects.reduce((sum, s) => sum + (s.max > 0 ? (s.marks / s.max) * s.weight : 0), 0);
 }

@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 
 const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const SUBJECT_LABELS: Record<string, string> = { physics: 'Physics', chem: 'Chemistry', math: 'Math', bio: 'Biology', lang1: 'Lang 1', lang2: 'Lang 2', psychology: 'Psychology' };
+const SUBJECT_LABELS: Record<string, string> = { physics: 'Physics', chem: 'Chemistry', math: 'Math', bio: 'Biology', lang1: 'Lang 1', lang2: 'Lang 2', psychology: 'Psychology', computerScience: 'Computer Sci' };
 
 export default function BatchAnalytics() {
   const user = useSelector((s: RootState) => s.auth.user);

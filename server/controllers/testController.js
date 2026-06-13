@@ -56,6 +56,8 @@ async function syncCEForMonth(studentId, month, year) {
     lang2Max = 0;
   let psychologyMarks = 0,
     psychologyMax = 0;
+  let computerScienceMarks = 0,
+    computerScienceMax = 0;
   let mcqMarks = 0,
     mcqMax = 0;
 
@@ -94,6 +96,10 @@ async function syncCEForMonth(studentId, month, year) {
           psychologyMarks += t.marks;
           psychologyMax += t.maxMarks;
           break;
+        case "computer science":
+          computerScienceMarks += t.marks;
+          computerScienceMax += t.maxMarks;
+          break;
       }
     }
   }
@@ -117,6 +123,8 @@ async function syncCEForMonth(studentId, month, year) {
     lang2Max,
     psychologyMarks,
     psychologyMax,
+    computerScienceMarks,
+    computerScienceMax,
     mcqMarks,
     mcqMax,
     mcqPct: mcqMax > 0 ? (mcqMarks / mcqMax) * 100 : 0,
@@ -164,7 +172,7 @@ async function listWeekly(req, res) {
 }
 
 const VALID_TEST_TYPES   = new Set(['Theory', 'MCQ']);
-const VALID_SUBJECTS     = new Set(['physics', 'chemistry', 'math', 'biology', 'language 1', 'language 2', 'psychology']);
+const VALID_SUBJECTS     = new Set(['physics', 'chemistry', 'math', 'biology', 'language 1', 'language 2', 'psychology', 'computer science']);
 
 async function addWeekly(req, res) {
   const student = await guardStudent(req, res);
@@ -176,7 +184,7 @@ async function addWeekly(req, res) {
     return badRequest(res, "testType must be 'Theory' or 'MCQ'");
   const effectiveType = testType || 'Theory';
   if (effectiveType !== 'MCQ' && !VALID_SUBJECTS.has(subject.toLowerCase()))
-    return badRequest(res, `subject must be one of: Physics, Chemistry, Math, Biology, Language 1, Language 2, Psychology`);
+    return badRequest(res, `subject must be one of: Physics, Chemistry, Math, Biology, Language 1, Language 2, Psychology, Computer Science`);
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
   if (!isFinite(Number(marks)) || Number(marks) < 0)
@@ -247,7 +255,7 @@ async function addMonthly(req, res) {
     return badRequest(res, "testType must be 'Theory' or 'MCQ'");
   const effectiveType = testType || 'Theory';
   if (effectiveType !== 'MCQ' && !VALID_SUBJECTS.has(subject.toLowerCase()))
-    return badRequest(res, `subject must be one of: Physics, Chemistry, Math, Biology, Language 1, Language 2, Psychology`);
+    return badRequest(res, `subject must be one of: Physics, Chemistry, Math, Biology, Language 1, Language 2, Psychology, Computer Science`);
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
   if (!isFinite(Number(marks)) || Number(marks) < 0)
@@ -324,7 +332,7 @@ async function bulkAdd(req, res) {
     return badRequest(res, "testType must be 'Theory' or 'MCQ'");
   const effectiveType = testType || 'Theory';
   if (effectiveType !== 'MCQ' && !VALID_SUBJECTS.has(subject.toLowerCase()))
-    return badRequest(res, `subject must be one of: Physics, Chemistry, Math, Biology, Language 1, Language 2, Psychology`);
+    return badRequest(res, `subject must be one of: Physics, Chemistry, Math, Biology, Language 1, Language 2, Psychology, Computer Science`);
   if (Number(maxMarks) <= 0)
     return badRequest(res, "maxMarks must be positive");
   if (!isFinite(Number(maxMarks)))

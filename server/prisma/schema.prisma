@@ -87,8 +87,10 @@ model CERecord {
   lang1Max        Float       @default(100)
   lang2Marks      Float
   lang2Max        Float       @default(100)
-  psychologyMarks Float       @default(0)
-  psychologyMax   Float       @default(100)
+  psychologyMarks     Float   @default(0)
+  psychologyMax       Float   @default(100)
+  computerScienceMarks Float  @default(0)
+  computerScienceMax  Float   @default(100)
   mcqMarks        Float       @default(0)
   mcqMax          Float       @default(100)
   mcqPct          Float

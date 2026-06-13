@@ -568,6 +568,7 @@ export default function StudentDetail() {
                     { label: 'Language 1', key: 'lang1' },
                     { label: 'Language 2', key: 'lang2' },
                     { label: 'Psychology', key: 'psychology' },
+                    { label: 'Computer Science', key: 'computerScience' },
                   ].map((s) => {
                     const avg = records.reduce((acc, r) => {
                       const marks = (r as any)[`${s.key}Marks`] as number;
@@ -925,6 +926,7 @@ export default function StudentDetail() {
                     <option value="Language 1">Language 1</option>
                     <option value="Language 2">Language 2</option>
                     <option value="Psychology">Psychology</option>
+                    <option value="Computer Science">Computer Science</option>
                     {wForm.testType === 'MCQ' && <option value="General MCQ">General MCQ</option>}
                   </select>
                 </div>
@@ -1290,6 +1292,7 @@ export default function StudentDetail() {
                     <option value="Language 1">Language 1</option>
                     <option value="Language 2">Language 2</option>
                     <option value="Psychology">Psychology</option>
+                    <option value="Computer Science">Computer Science</option>
                     {mForm.testType === 'MCQ' && <option value="General MCQ">General MCQ</option>}
                   </select>
                 </div>

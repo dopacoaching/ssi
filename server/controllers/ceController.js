@@ -47,6 +47,7 @@ async function aggregateTestMarks(studentId, month, year) {
   let lang1Marks = 0,   lang1Max   = 0;
   let lang2Marks = 0,   lang2Max   = 0;
   let psychologyMarks = 0, psychologyMax = 0;
+  let computerScienceMarks = 0, computerScienceMax = 0;
   let mcqMarks = 0,     mcqMax     = 0;
 
   for (const t of inMonth) {
@@ -54,14 +55,15 @@ async function aggregateTestMarks(studentId, month, year) {
       mcqMarks += t.marks; mcqMax += t.maxMarks;
     } else {
       switch (t.subject.toLowerCase()) {
-        case 'physics':    physicsMarks += t.marks; physicsMax += t.maxMarks; break;
-        case 'chemistry':  chemMarks    += t.marks; chemMax    += t.maxMarks; break;
-        case 'math':       mathMarks    += t.marks; mathMax    += t.maxMarks; break;
-        case 'biology':    bioMarks     += t.marks; bioMax     += t.maxMarks; break;
-        case 'language 1': lang1Marks   += t.marks; lang1Max   += t.maxMarks; break;
-        case 'language 2': lang2Marks   += t.marks; lang2Max   += t.maxMarks; break;
+        case 'physics':           physicsMarks += t.marks; physicsMax += t.maxMarks; break;
+        case 'chemistry':         chemMarks    += t.marks; chemMax    += t.maxMarks; break;
+        case 'math':              mathMarks    += t.marks; mathMax    += t.maxMarks; break;
+        case 'biology':           bioMarks     += t.marks; bioMax     += t.maxMarks; break;
+        case 'language 1':        lang1Marks   += t.marks; lang1Max   += t.maxMarks; break;
+        case 'language 2':        lang2Marks   += t.marks; lang2Max   += t.maxMarks; break;
         case 'psychology':
-        case 'physchology': psychologyMarks += t.marks; psychologyMax += t.maxMarks; break;
+        case 'physchology':       psychologyMarks     += t.marks; psychologyMax     += t.maxMarks; break;
+        case 'computer science':  computerScienceMarks += t.marks; computerScienceMax += t.maxMarks; break;
       }
     }
   }
@@ -74,6 +76,7 @@ async function aggregateTestMarks(studentId, month, year) {
     lang1Marks,   lang1Max,
     lang2Marks,   lang2Max,
     psychologyMarks, psychologyMax,
+    computerScienceMarks, computerScienceMax,
     mcqMarks,     mcqMax,
   };
 }

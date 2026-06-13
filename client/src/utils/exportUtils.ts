@@ -29,7 +29,8 @@ export interface CERow {
   bioMarks: number;     bioMax: number;
   lang1Marks: number;   lang1Max: number;
   lang2Marks: number;   lang2Max: number;
-  psychologyMarks: number; psychologyMax: number;
+  psychologyMarks: number;     psychologyMax: number;
+  computerScienceMarks: number; computerScienceMax: number;
   mcqPct: number; attendancePct: number;
   hasMedCert: boolean; notesStatus: string;
   theoryScore: number; mcqScore: number;
@@ -280,8 +281,9 @@ export function exportCEExcel(records: CERow[], studentName: string) {
     'Biology':      `${r.bioMarks}/${r.bioMax}`,
     'Language 1':   `${r.lang1Marks}/${r.lang1Max}`,
     'Language 2':   `${r.lang2Marks}/${r.lang2Max}`,
-    'Psychology':   r.psychologyMax > 0 ? `${r.psychologyMarks}/${r.psychologyMax}` : '—',
-    'MCQ %':        parseFloat(r.mcqPct.toFixed(1)),
+    'Psychology':      r.psychologyMax > 0 ? `${r.psychologyMarks}/${r.psychologyMax}` : '—',
+    'Computer Sci':   r.computerScienceMax > 0 ? `${r.computerScienceMarks}/${r.computerScienceMax}` : '—',
+    'MCQ %':           parseFloat(r.mcqPct.toFixed(1)),
     'Attendance %': r.attendancePct,
     'Med. Cert':    r.hasMedCert ? 'Yes' : 'No',
     'Notes Status': r.notesStatus,
@@ -630,7 +632,7 @@ export function exportCEPDF(records: CERow[], studentName: string) {
 
   autoTable(doc, {
     startY: afterSummary + 16,
-    head:   [['Period', 'Physics', 'Chemistry', 'Math', 'Biology', 'Lang 1', 'Lang 2', 'Psychology', 'MCQ%', 'Att.%']],
+    head:   [['Period', 'Physics', 'Chemistry', 'Math', 'Biology', 'Lang 1', 'Lang 2', 'Psychology', 'Computer Sci', 'MCQ%', 'Att.%']],
     body:   records.map((r) => [
       `${MONTHS[r.month]} ${r.year}`,
       r.physicsMax > 0 ? `${r.physicsMarks}/${r.physicsMax}` : '—',
@@ -640,6 +642,7 @@ export function exportCEPDF(records: CERow[], studentName: string) {
       r.lang1Max > 0 ? `${r.lang1Marks}/${r.lang1Max}` : '—',
       r.lang2Max > 0 ? `${r.lang2Marks}/${r.lang2Max}` : '—',
       r.psychologyMax > 0 ? `${r.psychologyMarks}/${r.psychologyMax}` : '—',
+      r.computerScienceMax > 0 ? `${r.computerScienceMarks}/${r.computerScienceMax}` : '—',
       `${r.mcqPct.toFixed(0)}%`,
       `${r.attendancePct}%`,
     ]),
@@ -837,7 +840,8 @@ export function exportReportCardPDF({ student, ceRecords, remarks = [] }: Report
       { label: 'Biology',    mk: 'bioMarks',     mx: 'bioMax' },
       { label: 'Language 1', mk: 'lang1Marks',   mx: 'lang1Max' },
       { label: 'Language 2', mk: 'lang2Marks',   mx: 'lang2Max' },
-      { label: 'Psychology', mk: 'psychologyMarks', mx: 'psychologyMax' },
+      { label: 'Psychology',      mk: 'psychologyMarks',     mx: 'psychologyMax' },
+      { label: 'Computer Science', mk: 'computerScienceMarks', mx: 'computerScienceMax' },
     ];
     const subRows = subjects.map((s) => {
       const validRecs = ceRecords.filter((r) => (r as any)[s.mx] > 0);

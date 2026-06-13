@@ -12,7 +12,8 @@ export interface CERecord {
   bioMarks: number;     bioMax: number;
   lang1Marks: number;   lang1Max: number;
   lang2Marks: number;   lang2Max: number;
-  psychologyMarks: number; psychologyMax: number;
+  psychologyMarks: number;     psychologyMax: number;
+  computerScienceMarks: number; computerScienceMax: number;
   mcqMarks: number;
   mcqMax: number;
   mcqPct: number;

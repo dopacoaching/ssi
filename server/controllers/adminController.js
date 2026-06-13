@@ -111,7 +111,7 @@ async function batchAnalytics(req, res) {
     .map(m => ({ month: m.month, year: m.year, avgCE: m.ceTotal / m.count, avgAttendance: m.attTotal / m.count, studentCount: m.count }))
     .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
 
-  const subKeys = ['physics', 'chem', 'math', 'bio', 'lang1', 'lang2', 'psychology'];
+  const subKeys = ['physics', 'chem', 'math', 'bio', 'lang1', 'lang2', 'psychology', 'computerScience'];
   const subSums = Object.fromEntries(subKeys.map(k => [k, { total: 0, count: 0 }]));
   students.forEach(s => {
     s.ceRecords.forEach(r => {
