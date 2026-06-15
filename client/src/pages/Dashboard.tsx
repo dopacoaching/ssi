@@ -6,6 +6,7 @@ import { RootState } from '../store';
 import { useBatches } from '../hooks/useBatches';
 import { useAdmin, AlertStudent } from '../hooks/useAdmin';
 import Layout from '../components/Layout';
+import EmptyState from '../components/EmptyState';
 
 export default function Dashboard() {
   const user = useSelector((s: RootState) => s.auth.user);
@@ -49,6 +50,17 @@ export default function Dashboard() {
           </div>
         )}
 
+        {!loading && visible.length === 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <EmptyState
+              title="No batches assigned yet"
+              description={user?.role === 'ADMIN' ? 'Create a batch from the Batches page to get started.' : 'You have not been assigned to any batches yet. Contact an administrator.'}
+              icon="clipboard"
+            />
+          </div>
+        )}
+
+        {!loading && visible.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {visible.map((batch) => {
             const tNames = teachersForBatch(batch.id);
@@ -84,10 +96,8 @@ export default function Dashboard() {
             );
           })}
 
-          {!loading && visible.length === 0 && (
-            <p className="text-sm text-gray-400 dark:text-gray-500 col-span-3">No batches assigned yet.</p>
-          )}
         </div>
+        )}
 
         {alerts.length > 0 && (
           <div className="mt-8">

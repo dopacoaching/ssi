@@ -131,7 +131,7 @@ export default function StudentPortal() {
         <div className="mb-10 flex items-center gap-5">
           <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-slate-200 dark:border-gray-600 bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
             {student.photo
-              ? <img src={student.photo} alt={student.fullName} className="w-full h-full object-cover" />
+              ? <img src={student.photo} alt={student.fullName} className="w-full h-full object-cover" onError={() => setStudent(prev => prev ? { ...prev, photo: undefined } : prev)} />
               : <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 select-none">{student.fullName.charAt(0).toUpperCase()}</span>
             }
           </div>

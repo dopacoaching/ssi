@@ -64,7 +64,7 @@ export default function MonthMultiSelect({
       </button>
 
       {open && (
-        <div className="absolute z-50 top-full mt-1.5 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-3 w-56">
+        <div className="absolute z-50 top-full mt-1.5 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-3 w-56 max-w-[calc(100vw-2rem)]">
           {onYearChange !== undefined && (
             <div className="mb-3 pb-2.5 border-b border-gray-100 dark:border-gray-700">
               <label className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">

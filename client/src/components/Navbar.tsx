@@ -74,6 +74,8 @@ export default function Navbar({ onMenuToggle }: Props) {
       {isStaff && (
         <div ref={wrapRef} className="relative hidden sm:block mx-4 flex-1 max-w-xs">
           <input
+            type="search"
+            aria-label="Search students"
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => e.key === 'Escape' && setOpen(false)}
@@ -123,8 +125,11 @@ export default function Navbar({ onMenuToggle }: Props) {
         {/* iOS install instructions modal */}
         {iosModal && (
           <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6" onClick={() => setIosModal(false)}>
-            <div className="absolute inset-0 bg-black/50" />
+            <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
             <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Install DOPA SSI"
               className="relative w-full max-w-sm bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >

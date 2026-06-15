@@ -13,8 +13,9 @@ export default function Layout({ children }: Props) {
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+            className="fixed inset-0 top-16 z-20 bg-black/40 dark:bg-black/60 lg:hidden"
             onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
           />
         )}
         <div

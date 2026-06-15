@@ -464,12 +464,12 @@ export default function Students() {
 
                 <button
                   onClick={() => handleExportStudents('excel')}
-                  className="text-xs px-4 py-3.5 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1.5 font-medium">
+                  className="text-xs px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1.5 font-medium">
                   ↓ Student List (Excel)
                 </button>
                 <button
                   onClick={() => handleExportStudents('pdf')}
-                  className="text-xs px-4 py-3.5 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1.5 font-medium">
+                  className="text-xs px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1.5 font-medium">
                   ↓ Student List (PDF)
                 </button>
               </>
@@ -606,7 +606,8 @@ export default function Students() {
                             type="checkbox"
                             checked={selectedStudents.includes(s.id)}
                             onChange={() => toggleStudentSelection(s.id)}
-                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                            aria-label={`Select ${s.fullName}`}
+                            className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
                           />
                         )}
                         <Link to={`/students/${s.id}`} className="flex-1 flex items-center justify-between">
@@ -650,7 +651,8 @@ export default function Students() {
                               type="checkbox"
                               checked={selectedStudents.length === students.length && students.length > 0}
                               onChange={toggleAllStudents}
-                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                              aria-label="Select all students"
+                              className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
                             />
                           </th>
                         )}
@@ -674,7 +676,7 @@ export default function Students() {
                                   type="checkbox"
                                   checked={selectedStudents.includes(s.id)}
                                   onChange={() => toggleStudentSelection(s.id)}
-                                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                  className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
                                 />
                               </td>
                             )}

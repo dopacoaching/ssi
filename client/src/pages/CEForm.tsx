@@ -126,7 +126,7 @@ export default function CEForm({ studentId, existingRecords = [], onSaved }: Pro
 
         <div className="flex items-center gap-2 pt-1">
           <input type="checkbox" id="medcert" checked={form.hasMedCert} disabled={isLocked}
-            onChange={(e) => set('hasMedCert', e.target.checked)} className="rounded text-indigo-600" />
+            onChange={(e) => set('hasMedCert', e.target.checked)} className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-indigo-600 focus:ring-indigo-500 disabled:opacity-60" />
           <label htmlFor="medcert" className="text-xs text-gray-600 dark:text-gray-400">Has Medical Certificate (+0.5 mitigation)</label>
         </div>
 

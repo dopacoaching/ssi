@@ -44,8 +44,11 @@ export default function AuditLogPage() {
   }, [fetch]);
 
   useEffect(() => {
-    load(1, { search, action, entity, from, to });
-    setPage(1);
+    const t = setTimeout(() => {
+      load(1, { search, action, entity, from, to });
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
   }, [search, action, entity, from, to]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function changePage(next: number) {

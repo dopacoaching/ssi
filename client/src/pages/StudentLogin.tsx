@@ -39,11 +39,13 @@ export default function StudentLogin() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest mb-2">
+            <label htmlFor="student-reg" className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest mb-2">
               Registration ID
             </label>
             <input
+              id="student-reg"
               type="text"
+              autoComplete="username"
               required
               value={regNumber}
               onChange={(e) => setRegNumber(e.target.value)}
@@ -52,11 +54,13 @@ export default function StudentLogin() {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest mb-2">
+            <label htmlFor="student-password" className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest mb-2">
               Password
             </label>
             <input
+              id="student-password"
               type="password"
+              autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}

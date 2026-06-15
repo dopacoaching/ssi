@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 interface Props {
   open: boolean;
   title: string;
@@ -10,12 +12,30 @@ interface Props {
 }
 
 export default function ConfirmModal({ open, title, message, confirmLabel = 'Confirm', danger = false, loading = false, onConfirm, onCancel }: Props) {
+  const confirmRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    confirmRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !loading) onCancel();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, loading, onCancel]);
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 dark:bg-black/60" onClick={onCancel} />
-      <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div className="absolute inset-0 bg-black/40 dark:bg-black/60" onClick={onCancel} aria-hidden="true" />
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        aria-describedby="confirm-message"
+        className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4"
+      >
         <div className="flex items-start gap-3">
           {danger && (
             <span className="flex-shrink-0 w-9 h-9 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
@@ -26,8 +46,8 @@ export default function ConfirmModal({ open, title, message, confirmLabel = 'Con
             </span>
           )}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">{title}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{message}</p>
+            <h3 id="confirm-title" className="text-sm font-semibold text-gray-800 dark:text-gray-100">{title}</h3>
+            <p id="confirm-message" className="text-sm text-gray-500 dark:text-gray-400 mt-1">{message}</p>
           </div>
         </div>
         <div className="flex gap-2 justify-end pt-1">
@@ -39,6 +59,7 @@ export default function ConfirmModal({ open, title, message, confirmLabel = 'Con
             Cancel
           </button>
           <button
+            ref={confirmRef}
             onClick={onConfirm}
             disabled={loading}
             className={`px-5 py-2.5 text-sm text-white rounded-xl font-medium disabled:opacity-60 ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}

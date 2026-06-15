@@ -138,7 +138,7 @@ export default function Teachers() {
               <div className="flex flex-wrap gap-3">
                 {batches.map((b) => (
                   <label key={b.id} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
-                    <input type="checkbox" className="w-4 h-4 rounded" checked={form.batchIds.includes(b.id)} onChange={() => toggleBatch(b.id)} />
+                    <input type="checkbox" className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-indigo-600 focus:ring-indigo-500" checked={form.batchIds.includes(b.id)} onChange={() => toggleBatch(b.id)} />
                     {b.name}
                   </label>
                 ))}
@@ -169,7 +169,7 @@ export default function Teachers() {
               <div className="flex flex-wrap gap-3">
                 {batches.map((b) => (
                   <label key={b.id} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
-                    <input type="checkbox" className="w-4 h-4 rounded" checked={editForm.batchIds.includes(b.id)} onChange={() => toggleEditBatch(b.id)} />
+                    <input type="checkbox" className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-indigo-600 focus:ring-indigo-500" checked={editForm.batchIds.includes(b.id)} onChange={() => toggleEditBatch(b.id)} />
                     {b.name}
                   </label>
                 ))}
@@ -189,14 +189,20 @@ export default function Teachers() {
         {/* Reset Password modal */}
         {resetId && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 dark:bg-black/60" onClick={() => { setResetId(null); setResetPw(''); }} />
-            <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-              <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100">Reset Password</h3>
+            <div className="absolute inset-0 bg-black/40 dark:bg-black/60" onClick={() => { setResetId(null); setResetPw(''); }} aria-hidden="true" />
+            <form
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="reset-pw-title"
+              onSubmit={(e) => { e.preventDefault(); handleResetPassword(); }}
+              className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4"
+            >
+              <h3 id="reset-pw-title" className="text-base font-semibold text-gray-800 dark:text-gray-100">Reset Password</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">Enter a new password for this teacher.</p>
               <div>
-                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1.5 font-medium">New Password</label>
+                <label htmlFor="reset-pw-input" className="block text-xs text-gray-600 dark:text-gray-400 mb-1.5 font-medium">New Password</label>
                 <input
-                  type="password" value={resetPw} autoFocus
+                  id="reset-pw-input" type="password" value={resetPw} autoFocus autoComplete="new-password"
                   onChange={(e) => setResetPw(e.target.value)}
                   placeholder="Min 8 characters"
                   className={inputCls}
@@ -204,18 +210,18 @@ export default function Teachers() {
               </div>
               <div className="flex gap-2 pt-1">
                 <button
-                  onClick={handleResetPassword}
+                  type="submit"
                   disabled={resetSaving || resetPw.length < 8}
                   className="flex-1 py-2.5 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl font-medium disabled:opacity-60"
                 >
                   {resetSaving ? 'Resetting…' : 'Reset Password'}
                 </button>
-                <button onClick={() => { setResetId(null); setResetPw(''); }}
+                <button type="button" onClick={() => { setResetId(null); setResetPw(''); }}
                   className="px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-xl">
                   Cancel
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         )}
 
