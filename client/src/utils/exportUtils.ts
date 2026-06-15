@@ -178,8 +178,13 @@ function applyStyles(
         const pctRule = colorRules.find((r) => r.type === 'pct' && r.colIndex === C2);
 
         if (ceRule) {
-          const score = parseFloat(String(cell.v ?? 0));
-          cell.s = ceScoreStyle(isNaN(score) ? 0 : score, isEven);
+          const score = parseFloat(String(cell.v ?? ''));
+          if (isNaN(score)) {
+            const align: 'left' | 'center' = firstColLeft && C2 === 0 ? 'left' : 'center';
+            cell.s = rowStyle(isEven, align);
+          } else {
+            cell.s = ceScoreStyle(score, isEven);
+          }
         } else if (pctRule) {
           const raw = String(cell.v ?? '').replace('%', '');
           const pct = parseFloat(raw);
@@ -305,12 +310,12 @@ export function exportCEExcel(records: CERow[], studentName: string) {
   // Sheet 2 – Subject marks
   const detail = records.map((r) => ({
     'Period':       `${MONTHS[r.month]} ${r.year}`,
-    'Physics':      `${r.physicsMarks}/${r.physicsMax}`,
-    'Chemistry':    `${r.chemMarks}/${r.chemMax}`,
+    'Physics':      r.physicsMax > 0 ? `${r.physicsMarks}/${r.physicsMax}` : '—',
+    'Chemistry':    r.chemMax > 0 ? `${r.chemMarks}/${r.chemMax}` : '—',
     'Math':         r.mathMax > 0 ? `${r.mathMarks}/${r.mathMax}` : '—',
-    'Biology':      `${r.bioMarks}/${r.bioMax}`,
-    'Language 1':   `${r.lang1Marks}/${r.lang1Max}`,
-    'Language 2':   `${r.lang2Marks}/${r.lang2Max}`,
+    'Biology':      r.bioMax > 0 ? `${r.bioMarks}/${r.bioMax}` : '—',
+    'Language 1':   r.lang1Max > 0 ? `${r.lang1Marks}/${r.lang1Max}` : '—',
+    'Language 2':   r.lang2Max > 0 ? `${r.lang2Marks}/${r.lang2Max}` : '—',
     'Psychology':      r.psychologyMax > 0 ? `${r.psychologyMarks}/${r.psychologyMax}` : '—',
     'Computer Sci':   r.computerScienceMax > 0 ? `${r.computerScienceMarks}/${r.computerScienceMax}` : '—',
     'MCQ %':           parseFloat(r.mcqPct.toFixed(1)),
@@ -325,8 +330,8 @@ export function exportCEExcel(records: CERow[], studentName: string) {
   applyStyles(wsDetail, detail, {
     firstColLeft: true,
     colorRules: [
-      { type: 'pct', colIndex: 8 },
       { type: 'pct', colIndex: 9 },
+      { type: 'pct', colIndex: 10 },
     ],
   });
 
@@ -365,6 +370,7 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
     .filter((s) => s.ceRecords.length > 0)
     .map((s) => {
       const n = s.ceRecords.length;
+      const totalCE = parseFloat(s.ceRecords.reduce((a, r) => a + r.totalCE, 0).toFixed(2));
       return {
         'Reg No.':          s.regNumber,
         'Name':             s.fullName,
@@ -373,15 +379,16 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
         'MCQ (/5×n)':       parseFloat(s.ceRecords.reduce((a, r) => a + r.mcqScore,    0).toFixed(2)),
         'Attendance (/3×n)':parseFloat(s.ceRecords.reduce((a, r) => a + r.attendScore, 0).toFixed(2)),
         'Notes (/2×n)':     parseFloat(s.ceRecords.reduce((a, r) => a + r.notesScore,  0).toFixed(2)),
-        'Total CE':         parseFloat(s.ceRecords.reduce((a, r) => a + r.totalCE,     0).toFixed(2)),
+        'Total CE':         totalCE,
         'Max CE':           n * 20,
+        'Avg CE (/20)':     parseFloat((totalCE / n).toFixed(2)),
       };
     });
   const wsCE = XLSX.utils.json_to_sheet(ceRows.length ? ceRows : [{ Note: 'No CE records' }]);
   if (ceRows.length) {
     applyAutoWidth(wsCE, ceRows);
     setRowHeight(wsCE, ceRows.length);
-    applyStyles(wsCE, ceRows, { firstColLeft: true, colorRules: [{ type: 'ce', colIndex: 7 }] });
+    applyStyles(wsCE, ceRows, { firstColLeft: true, colorRules: [{ type: 'ce', colIndex: 9 }] });
   }
   XLSX.utils.book_append_sheet(wb, wsCE, 'CE Records');
 
@@ -401,6 +408,7 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
         'Notes (Σ)':      parseFloat(sorted.reduce((a, r) => a + r.notesScore,  0).toFixed(2)),
         'Total CE':       parseFloat(totalCE.toFixed(2)),
         'Max CE':         sorted.length * 20,
+        'Avg CE (/20)':   parseFloat((totalCE / sorted.length).toFixed(2)),
         'Monthly CE':     ceLine,
       };
     });
@@ -408,7 +416,7 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
   if (cePerMonthRows.length) {
     applyAutoWidth(wsCEMonth, cePerMonthRows);
     setRowHeight(wsCEMonth, cePerMonthRows.length);
-    applyStyles(wsCEMonth, cePerMonthRows, { firstColLeft: true, colorRules: [{ type: 'ce', colIndex: 6 }] });
+    applyStyles(wsCEMonth, cePerMonthRows, { firstColLeft: true, colorRules: [{ type: 'ce', colIndex: 8 }] });
   }
   XLSX.utils.book_append_sheet(wb, wsCEMonth, 'CE Breakdown');
 
@@ -731,7 +739,7 @@ export function exportCEPDF(records: CERow[], studentName: string) {
       r.lang2Max > 0 ? `${r.lang2Marks}/${r.lang2Max}` : '—',
       r.psychologyMax > 0 ? `${r.psychologyMarks}/${r.psychologyMax}` : '—',
       r.computerScienceMax > 0 ? `${r.computerScienceMarks}/${r.computerScienceMax}` : '—',
-      `${r.mcqPct.toFixed(0)}%`,
+      `${r.mcqPct.toFixed(1)}%`,
       `${r.attendancePct}%`,
     ]),
     headStyles:  { fillColor: [79, 70, 229], fontSize: 8.5, fontStyle: 'bold', halign: 'center' },
@@ -741,7 +749,7 @@ export function exportCEPDF(records: CERow[], studentName: string) {
     tableLineColor: [226, 232, 240],
     tableLineWidth: 0.2,
     didParseCell: (data) => {
-      if (data.section === 'body' && (data.column.index === 8 || data.column.index === 9)) {
+      if (data.section === 'body' && (data.column.index === 9 || data.column.index === 10)) {
         const val = parseFloat(String(data.cell.text[0]));
         if (!isNaN(val)) {
           if (val >= 80)      data.cell.styles.textColor = [4, 120, 87];
@@ -1098,7 +1106,7 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
         sorted.reduce((a, r) => a + r.attendScore, 0).toFixed(1),
         sorted.reduce((a, r) => a + r.notesScore,  0).toFixed(1),
         totalCE.toFixed(1),
-        `/ ${sorted.length * 20}`,
+        String(sorted.length * 20),
         ceLine,
       ];
     });
@@ -1119,10 +1127,12 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
     tableLineWidth: 0.2,
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 6) {
-        const val = parseFloat(data.cell.text[0]);
-        if (!isNaN(val)) {
-          if (val >= 15)      { data.cell.styles.textColor = [4, 120, 87];  data.cell.styles.fontStyle = 'bold'; }
-          else if (val >= 10) { data.cell.styles.textColor = [180, 83, 9];  data.cell.styles.fontStyle = 'bold'; }
+        const total = parseFloat(data.cell.text[0]);
+        const max   = parseFloat(String((data.row.raw as any[])[7]));
+        const avg   = max > 0 ? (total / max) * 20 : NaN;
+        if (!isNaN(avg)) {
+          if (avg >= 15)      { data.cell.styles.textColor = [4, 120, 87];  data.cell.styles.fontStyle = 'bold'; }
+          else if (avg >= 10) { data.cell.styles.textColor = [180, 83, 9];  data.cell.styles.fontStyle = 'bold'; }
           else                { data.cell.styles.textColor = [185, 28, 28]; data.cell.styles.fontStyle = 'bold'; }
         }
       }
