@@ -193,42 +193,6 @@ function applyStyles(
   }
 }
 
-function applySumRowsToSheet(ws: XLSX.WorkSheet, rows: object[], markerCol: string, markerValue: string) {
-  const range = XLSX.utils.decode_range(ws['!ref']!);
-  rows.forEach((row: any, rowIdx) => {
-    if (String(row[markerCol]) === markerValue) {
-      const sheetRow = rowIdx + 1;
-      for (let c = range.s.c; c <= range.e.c; ++c) {
-        const cellRef = XLSX.utils.encode_cell({ r: sheetRow, c });
-        if (!ws[cellRef]) ws[cellRef] = { t: 's', v: '' };
-        ws[cellRef].s = sumRowStyle(c <= 1 ? 'left' : 'center');
-      }
-    }
-  });
-}
-
-function applyCELineRowsToSheet(ws: XLSX.WorkSheet, ceLineIndices: Set<number>) {
-  const range = XLSX.utils.decode_range(ws['!ref']!);
-  const indigoStyle = (align: 'left' | 'center'): XLSX.CellStyle => ({
-    font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '4338CA' } },
-    fill: { fgColor: { rgb: 'EEF2FF' }, patternType: 'solid' },
-    alignment: { horizontal: align, vertical: 'center', wrapText: true },
-    border: {
-      top:    { style: 'thin', color: { rgb: 'C7D2FE' } },
-      bottom: { style: 'thin', color: { rgb: 'C7D2FE' } },
-      left:   { style: 'thin', color: { rgb: 'C7D2FE' } },
-      right:  { style: 'thin', color: { rgb: 'C7D2FE' } },
-    },
-  });
-  ceLineIndices.forEach((rowIdx) => {
-    const sheetRow = rowIdx + 1;
-    for (let c = range.s.c; c <= range.e.c; ++c) {
-      const cellRef = XLSX.utils.encode_cell({ r: sheetRow, c });
-      if (!ws[cellRef]) ws[cellRef] = { t: 's', v: '' };
-      ws[cellRef].s = indigoStyle(c <= 1 ? 'center' : 'left');
-    }
-  });
-}
 
 // ── Weekly Tests Excel ────────────────────────────────────────────────────────
 
@@ -421,56 +385,32 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
   }
   XLSX.utils.book_append_sheet(wb, wsCE, 'CE Records');
 
-  // Sheet 2 – CE Per Month: TOTAL row first, then ONE row with all months' CE for comparison
-  const cePerMonthRows: object[] = [];
-  const ceLineIndicesExcel = new Set<number>();
-  for (const s of students) {
-    const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-    if (!sorted.length) continue;
-    if (sorted.length >= 2) {
+  // Sheet 2 – CE Breakdown: ONE row per student with cumulative sums + monthly CE column
+  const cePerMonthRows = students
+    .filter((s) => s.ceRecords.length > 0)
+    .map((s) => {
+      const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
       const totalCE = sorted.reduce((a, r) => a + r.totalCE, 0);
-      cePerMonthRows.push({
-        'Reg No.':         s.regNumber,
-        'Name':            s.fullName,
-        'Period':          'TOTAL',
-        'Theory (/10)':    parseFloat(sorted.reduce((a, r) => a + r.theoryScore, 0).toFixed(2)),
-        'MCQ (/5)':        parseFloat(sorted.reduce((a, r) => a + r.mcqScore,    0).toFixed(2)),
-        'Attendance (/3)': parseFloat(sorted.reduce((a, r) => a + r.attendScore, 0).toFixed(2)),
-        'Notes (/2)':      parseFloat(sorted.reduce((a, r) => a + r.notesScore,  0).toFixed(2)),
-        'CE (/20)':        parseFloat(totalCE.toFixed(2)),
-        'Cumulative CE':   `${totalCE.toFixed(2)} / ${sorted.length * 20}`,
-      });
-      const ceLine = sorted.map((r) => `${MONTHS[r.month]} ${r.year}: ${r.totalCE.toFixed(1)}`).join('   |   ');
-      ceLineIndicesExcel.add(cePerMonthRows.length);
-      cePerMonthRows.push({
-        'Reg No.': s.regNumber, 'Name': s.fullName,
-        'Period': ceLine, 'Theory (/10)': '', 'MCQ (/5)': '',
-        'Attendance (/3)': '', 'Notes (/2)': '', 'CE (/20)': '', 'Cumulative CE': '',
-      });
-    } else {
-      const r = sorted[0];
-      cePerMonthRows.push({
-        'Reg No.':         s.regNumber,
-        'Name':            s.fullName,
-        'Period':          `${MONTHS[r.month]} ${r.year}`,
-        'Theory (/10)':    parseFloat(r.theoryScore.toFixed(2)),
-        'MCQ (/5)':        parseFloat(r.mcqScore.toFixed(2)),
-        'Attendance (/3)': parseFloat(r.attendScore.toFixed(2)),
-        'Notes (/2)':      parseFloat(r.notesScore.toFixed(2)),
-        'CE (/20)':        parseFloat(r.totalCE.toFixed(2)),
-        'Cumulative CE':   `${r.totalCE.toFixed(2)} / 20`,
-      });
-    }
-  }
+      const ceLine  = sorted.map((r) => `${MONTHS[r.month]} ${r.year}: ${r.totalCE.toFixed(1)}`).join('  |  ');
+      return {
+        'Reg No.':        s.regNumber,
+        'Name':           s.fullName,
+        'Theory (Σ)':     parseFloat(sorted.reduce((a, r) => a + r.theoryScore, 0).toFixed(2)),
+        'MCQ (Σ)':        parseFloat(sorted.reduce((a, r) => a + r.mcqScore,    0).toFixed(2)),
+        'Attendance (Σ)': parseFloat(sorted.reduce((a, r) => a + r.attendScore, 0).toFixed(2)),
+        'Notes (Σ)':      parseFloat(sorted.reduce((a, r) => a + r.notesScore,  0).toFixed(2)),
+        'Total CE':       parseFloat(totalCE.toFixed(2)),
+        'Max CE':         sorted.length * 20,
+        'Monthly CE':     ceLine,
+      };
+    });
   const wsCEMonth = XLSX.utils.json_to_sheet(cePerMonthRows.length ? cePerMonthRows : [{ Note: 'No CE records' }]);
   if (cePerMonthRows.length) {
     applyAutoWidth(wsCEMonth, cePerMonthRows);
     setRowHeight(wsCEMonth, cePerMonthRows.length);
-    applyStyles(wsCEMonth, cePerMonthRows, { firstColLeft: true, colorRules: [{ type: 'ce', colIndex: 7 }] });
-    applySumRowsToSheet(wsCEMonth, cePerMonthRows, 'Period', 'TOTAL');
-    applyCELineRowsToSheet(wsCEMonth, ceLineIndicesExcel);
+    applyStyles(wsCEMonth, cePerMonthRows, { firstColLeft: true, colorRules: [{ type: 'ce', colIndex: 6 }] });
   }
-  XLSX.utils.book_append_sheet(wb, wsCEMonth, 'CE Per Month');
+  XLSX.utils.book_append_sheet(wb, wsCEMonth, 'CE Breakdown');
 
   // Sheet 3 – Weekly Tests
   const weeklyRows = students.flatMap((s) =>
@@ -1138,92 +1078,53 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
     },
   });
 
-  // Monthly CE Breakdown table — per (student × month) with running cumulative
+  // Monthly CE Breakdown — ONE row per student: cumulative sums + monthly CE column
   const afterCESum = (doc as any).lastAutoTable?.finalY ?? 60;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
-  doc.text('Monthly CE Breakdown', 14, afterCESum + 10);
+  doc.text('CE Breakdown', 14, afterCESum + 10);
 
-  const batchTotalRowIndices = new Set<number>();
-  const batchCELineIndices  = new Set<number>();
-  const ceBreakdownBody: (string | number)[][] = [];
-  let breakdownIdx = 0;
-  for (const s of students) {
-    const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-    if (!sorted.length) continue;
-    if (sorted.length >= 2) {
+  const ceBreakdownBody = students
+    .filter((s) => s.ceRecords.length > 0)
+    .map((s) => {
+      const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
       const totalCE = sorted.reduce((a, r) => a + r.totalCE, 0);
-      batchTotalRowIndices.add(breakdownIdx);
-      ceBreakdownBody.push([
-        s.regNumber, s.fullName, 'TOTAL',
+      const ceLine  = sorted.map((r) => `${MONTHS[r.month]} ${r.year}: ${r.totalCE.toFixed(1)}`).join('  |  ');
+      return [
+        s.regNumber, s.fullName,
         sorted.reduce((a, r) => a + r.theoryScore, 0).toFixed(1),
         sorted.reduce((a, r) => a + r.mcqScore,    0).toFixed(1),
         sorted.reduce((a, r) => a + r.attendScore, 0).toFixed(1),
         sorted.reduce((a, r) => a + r.notesScore,  0).toFixed(1),
         totalCE.toFixed(1),
-        `${totalCE.toFixed(1)} / ${sorted.length * 20}`,
-      ]);
-      breakdownIdx++;
-      // Single row — each month's CE only for comparison
-      const ceLine = sorted.map((r) => `${MONTHS[r.month]} ${r.year}: ${r.totalCE.toFixed(1)}`).join('   |   ');
-      batchCELineIndices.add(breakdownIdx);
-      ceBreakdownBody.push([s.regNumber, s.fullName, ceLine, '', '', '', '', '', '']);
-      breakdownIdx++;
-    } else {
-      const r = sorted[0];
-      ceBreakdownBody.push([
-        s.regNumber, s.fullName,
-        `${MONTHS[r.month]} ${r.year}`,
-        r.theoryScore.toFixed(1), r.mcqScore.toFixed(1),
-        r.attendScore.toFixed(1), r.notesScore.toFixed(1),
-        r.totalCE.toFixed(1), `${r.totalCE.toFixed(1)} / 20`,
-      ]);
-      breakdownIdx++;
-    }
-  }
+        `/ ${sorted.length * 20}`,
+        ceLine,
+      ];
+    });
 
   autoTable(doc, {
     startY: afterCESum + 14,
-    head:   [['Reg No.', 'Name', 'Period', 'Theory\n(/10)', 'MCQ\n(/5)', 'Attend.\n(/3)', 'Notes\n(/2)', 'CE\n(/20)', 'Cumulative\nCE']],
+    head:   [['Reg No.', 'Name', 'Theory\n(Σ)', 'MCQ\n(Σ)', 'Attend.\n(Σ)', 'Notes\n(Σ)', 'Total\nCE', 'Max', 'Monthly CE']],
     body:   ceBreakdownBody.length ? ceBreakdownBody : [['—', 'No CE records', '', '', '', '', '', '', '']],
     headStyles:  { fillColor: [79, 70, 229], fontSize: 8.5, fontStyle: 'bold', halign: 'center' },
     bodyStyles:  { fontSize: 8, textColor: [30, 41, 59], halign: 'center' },
-    columnStyles: { 0: { halign: 'left', cellWidth: 22 }, 1: { halign: 'left', cellWidth: 34 } },
+    columnStyles: {
+      0: { halign: 'left', cellWidth: 22 },
+      1: { halign: 'left', cellWidth: 30 },
+      8: { halign: 'left' },
+    },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     tableLineColor: [226, 232, 240],
     tableLineWidth: 0.2,
     didParseCell: (data) => {
-      if (data.section === 'body' && batchTotalRowIndices.has(data.row.index)) {
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [15, 23, 42];
-        data.cell.styles.textColor = [255, 255, 255];
-        return;
-      }
-      if (data.section === 'body' && batchCELineIndices.has(data.row.index)) {
-        data.cell.styles.fontStyle = 'italic';
-        data.cell.styles.fillColor = [238, 242, 255];
-        data.cell.styles.textColor = [67, 56, 202];
-        data.cell.styles.halign = 'left';
-        return;
-      }
-      if (data.section === 'body' && data.column.index === 7) {
+      if (data.section === 'body' && data.column.index === 6) {
         const val = parseFloat(data.cell.text[0]);
         if (!isNaN(val)) {
           if (val >= 15)      { data.cell.styles.textColor = [4, 120, 87];  data.cell.styles.fontStyle = 'bold'; }
           else if (val >= 10) { data.cell.styles.textColor = [180, 83, 9];  data.cell.styles.fontStyle = 'bold'; }
           else                { data.cell.styles.textColor = [185, 28, 28]; data.cell.styles.fontStyle = 'bold'; }
         }
-      }
-      if (data.section === 'body' && data.column.index === 8) {
-        const parts = data.cell.text[0].split('/');
-        if (parts.length === 2) {
-          const pct = (parseFloat(parts[0]) / parseFloat(parts[1])) * 100;
-          if (pct >= 75)      data.cell.styles.textColor = [4, 120, 87];
-          else if (pct >= 50) data.cell.styles.textColor = [180, 83, 9];
-          else                data.cell.styles.textColor = [185, 28, 28];
-        }
-        data.cell.styles.fontStyle = 'bold';
       }
     },
   });
