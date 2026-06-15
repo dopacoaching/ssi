@@ -197,12 +197,35 @@ function applySumRowsToSheet(ws: XLSX.WorkSheet, rows: object[], markerCol: stri
   const range = XLSX.utils.decode_range(ws['!ref']!);
   rows.forEach((row: any, rowIdx) => {
     if (String(row[markerCol]) === markerValue) {
-      const sheetRow = rowIdx + 1; // +1 for header row
+      const sheetRow = rowIdx + 1;
       for (let c = range.s.c; c <= range.e.c; ++c) {
         const cellRef = XLSX.utils.encode_cell({ r: sheetRow, c });
         if (!ws[cellRef]) ws[cellRef] = { t: 's', v: '' };
         ws[cellRef].s = sumRowStyle(c <= 1 ? 'left' : 'center');
       }
+    }
+  });
+}
+
+function applyCELineRowsToSheet(ws: XLSX.WorkSheet, ceLineIndices: Set<number>) {
+  const range = XLSX.utils.decode_range(ws['!ref']!);
+  const indigoStyle = (align: 'left' | 'center'): XLSX.CellStyle => ({
+    font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '4338CA' } },
+    fill: { fgColor: { rgb: 'EEF2FF' }, patternType: 'solid' },
+    alignment: { horizontal: align, vertical: 'center', wrapText: true },
+    border: {
+      top:    { style: 'thin', color: { rgb: 'C7D2FE' } },
+      bottom: { style: 'thin', color: { rgb: 'C7D2FE' } },
+      left:   { style: 'thin', color: { rgb: 'C7D2FE' } },
+      right:  { style: 'thin', color: { rgb: 'C7D2FE' } },
+    },
+  });
+  ceLineIndices.forEach((rowIdx) => {
+    const sheetRow = rowIdx + 1;
+    for (let c = range.s.c; c <= range.e.c; ++c) {
+      const cellRef = XLSX.utils.encode_cell({ r: sheetRow, c });
+      if (!ws[cellRef]) ws[cellRef] = { t: 's', v: '' };
+      ws[cellRef].s = indigoStyle(c <= 1 ? 'center' : 'left');
     }
   });
 }
@@ -263,7 +286,7 @@ export function exportMonthlyExcel(tests: MonthlyRow[], studentName: string) {
 // ── CE Records Excel ──────────────────────────────────────────────────────────
 
 export function exportCEExcel(records: CERow[], studentName: string) {
-  // Sheet 1 – Summary: TOTAL row first (when 2+ months), then per-month rows
+  // Sheet 1 – Summary: TOTAL row (when 2+ months) + ONE compact monthly-CE row; else single month row
   const sortedRecs = [...records].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
   const hasTotalRow = sortedRecs.length >= 2;
   const summary: object[] = [];
@@ -280,11 +303,20 @@ export function exportCEExcel(records: CERow[], studentName: string) {
       'Cumulative CE':   `${totalCE.toFixed(2)} / ${sortedRecs.length * 20}`,
       'Date Added':      '',
     });
-  }
-  let ceRunning = 0;
-  for (let i = 0; i < sortedRecs.length; i++) {
-    const r = sortedRecs[i];
-    ceRunning += r.totalCE;
+    // Single row — each month's CE only, for comparison
+    const ceLine = sortedRecs.map((r) => `${MONTHS[r.month]} ${r.year}: ${r.totalCE.toFixed(1)}`).join('   |   ');
+    summary.push({
+      'Period':          ceLine,
+      'Theory (/10)':    '',
+      'MCQ (/5)':        '',
+      'Attendance (/3)': '',
+      'Notes (/2)':      '',
+      'Total CE (/20)':  '',
+      'Cumulative CE':   '',
+      'Date Added':      '',
+    });
+  } else if (sortedRecs.length === 1) {
+    const r = sortedRecs[0];
     summary.push({
       'Period':          `${MONTHS[r.month]} ${r.year}`,
       'Theory (/10)':    parseFloat(r.theoryScore.toFixed(2)),
@@ -292,7 +324,7 @@ export function exportCEExcel(records: CERow[], studentName: string) {
       'Attendance (/3)': parseFloat(r.attendScore.toFixed(2)),
       'Notes (/2)':      parseFloat(r.notesScore.toFixed(2)),
       'Total CE (/20)':  parseFloat(r.totalCE.toFixed(2)),
-      'Cumulative CE':   `${ceRunning.toFixed(2)} / ${(i + 1) * 20}`,
+      'Cumulative CE':   `${r.totalCE.toFixed(2)} / 20`,
       'Date Added':      new Date(r.createdAt).toLocaleDateString(),
     });
   }
@@ -389,10 +421,12 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
   }
   XLSX.utils.book_append_sheet(wb, wsCE, 'CE Records');
 
-  // Sheet 2 – CE Per Month: TOTAL row first per student (when 2+ months), then per-month rows
+  // Sheet 2 – CE Per Month: TOTAL row first, then ONE row with all months' CE for comparison
   const cePerMonthRows: object[] = [];
+  const ceLineIndicesExcel = new Set<number>();
   for (const s of students) {
     const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+    if (!sorted.length) continue;
     if (sorted.length >= 2) {
       const totalCE = sorted.reduce((a, r) => a + r.totalCE, 0);
       cePerMonthRows.push({
@@ -406,20 +440,25 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
         'CE (/20)':        parseFloat(totalCE.toFixed(2)),
         'Cumulative CE':   `${totalCE.toFixed(2)} / ${sorted.length * 20}`,
       });
-    }
-    let running = 0;
-    for (let i = 0; i < sorted.length; i++) {
-      running += sorted[i].totalCE;
+      const ceLine = sorted.map((r) => `${MONTHS[r.month]} ${r.year}: ${r.totalCE.toFixed(1)}`).join('   |   ');
+      ceLineIndicesExcel.add(cePerMonthRows.length);
+      cePerMonthRows.push({
+        'Reg No.': s.regNumber, 'Name': s.fullName,
+        'Period': ceLine, 'Theory (/10)': '', 'MCQ (/5)': '',
+        'Attendance (/3)': '', 'Notes (/2)': '', 'CE (/20)': '', 'Cumulative CE': '',
+      });
+    } else {
+      const r = sorted[0];
       cePerMonthRows.push({
         'Reg No.':         s.regNumber,
         'Name':            s.fullName,
-        'Period':          `${MONTHS[sorted[i].month]} ${sorted[i].year}`,
-        'Theory (/10)':    parseFloat(sorted[i].theoryScore.toFixed(2)),
-        'MCQ (/5)':        parseFloat(sorted[i].mcqScore.toFixed(2)),
-        'Attendance (/3)': parseFloat(sorted[i].attendScore.toFixed(2)),
-        'Notes (/2)':      parseFloat(sorted[i].notesScore.toFixed(2)),
-        'CE (/20)':        parseFloat(sorted[i].totalCE.toFixed(2)),
-        'Cumulative CE':   `${running.toFixed(2)} / ${(i + 1) * 20}`,
+        'Period':          `${MONTHS[r.month]} ${r.year}`,
+        'Theory (/10)':    parseFloat(r.theoryScore.toFixed(2)),
+        'MCQ (/5)':        parseFloat(r.mcqScore.toFixed(2)),
+        'Attendance (/3)': parseFloat(r.attendScore.toFixed(2)),
+        'Notes (/2)':      parseFloat(r.notesScore.toFixed(2)),
+        'CE (/20)':        parseFloat(r.totalCE.toFixed(2)),
+        'Cumulative CE':   `${r.totalCE.toFixed(2)} / 20`,
       });
     }
   }
@@ -429,6 +468,7 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
     setRowHeight(wsCEMonth, cePerMonthRows.length);
     applyStyles(wsCEMonth, cePerMonthRows, { firstColLeft: true, colorRules: [{ type: 'ce', colIndex: 7 }] });
     applySumRowsToSheet(wsCEMonth, cePerMonthRows, 'Period', 'TOTAL');
+    applyCELineRowsToSheet(wsCEMonth, ceLineIndicesExcel);
   }
   XLSX.utils.book_append_sheet(wb, wsCEMonth, 'CE Per Month');
 
@@ -657,7 +697,8 @@ export function exportCEPDF(records: CERow[], studentName: string) {
 
   const sortedForPDF = [...records].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
   const ceBodyPDF: string[][] = [];
-  const pdfTotalIdx = sortedForPDF.length >= 2 ? 0 : -1;
+  const pdfTotalIdx  = sortedForPDF.length >= 2 ? 0 : -1;
+  const pdfCELineIdx = sortedForPDF.length >= 2 ? 1 : -1;
 
   if (sortedForPDF.length >= 2) {
     const totalCE = sortedForPDF.reduce((a, r) => a + r.totalCE, 0);
@@ -671,11 +712,11 @@ export function exportCEPDF(records: CERow[], studentName: string) {
       `${totalCE.toFixed(2)} / ${sortedForPDF.length * 20}`,
       '',
     ]);
-  }
-  let pdfRunning = 0;
-  for (let i = 0; i < sortedForPDF.length; i++) {
-    const r = sortedForPDF[i];
-    pdfRunning += r.totalCE;
+    // Single row — each month's CE only
+    const ceLine = sortedForPDF.map((r) => `${MONTHS[r.month]} ${r.year}: ${r.totalCE.toFixed(1)}`).join('   |   ');
+    ceBodyPDF.push([ceLine, '', '', '', '', '', '', '']);
+  } else if (sortedForPDF.length === 1) {
+    const r = sortedForPDF[0];
     ceBodyPDF.push([
       `${MONTHS[r.month]} ${r.year}`,
       r.theoryScore.toFixed(2),
@@ -683,7 +724,7 @@ export function exportCEPDF(records: CERow[], studentName: string) {
       r.attendScore.toFixed(2),
       r.notesScore.toFixed(2),
       r.totalCE.toFixed(2),
-      `${pdfRunning.toFixed(2)} / ${(i + 1) * 20}`,
+      `${r.totalCE.toFixed(2)} / 20`,
       new Date(r.createdAt).toLocaleDateString(),
     ]);
   }
@@ -703,6 +744,13 @@ export function exportCEPDF(records: CERow[], studentName: string) {
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fillColor = [15, 23, 42];
         data.cell.styles.textColor = [255, 255, 255];
+        return;
+      }
+      if (data.section === 'body' && data.row.index === pdfCELineIdx) {
+        data.cell.styles.fontStyle = 'italic';
+        data.cell.styles.fillColor = [238, 242, 255];
+        data.cell.styles.textColor = [67, 56, 202];
+        data.cell.styles.halign = 'left';
         return;
       }
       if (data.section === 'body' && data.column.index === 5) {
@@ -1098,10 +1146,12 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
   doc.text('Monthly CE Breakdown', 14, afterCESum + 10);
 
   const batchTotalRowIndices = new Set<number>();
+  const batchCELineIndices  = new Set<number>();
   const ceBreakdownBody: (string | number)[][] = [];
   let breakdownIdx = 0;
   for (const s of students) {
     const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+    if (!sorted.length) continue;
     if (sorted.length >= 2) {
       const totalCE = sorted.reduce((a, r) => a + r.totalCE, 0);
       batchTotalRowIndices.add(breakdownIdx);
@@ -1115,19 +1165,19 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
         `${totalCE.toFixed(1)} / ${sorted.length * 20}`,
       ]);
       breakdownIdx++;
-    }
-    let running = 0;
-    for (let i = 0; i < sorted.length; i++) {
-      running += sorted[i].totalCE;
+      // Single row — each month's CE only for comparison
+      const ceLine = sorted.map((r) => `${MONTHS[r.month]} ${r.year}: ${r.totalCE.toFixed(1)}`).join('   |   ');
+      batchCELineIndices.add(breakdownIdx);
+      ceBreakdownBody.push([s.regNumber, s.fullName, ceLine, '', '', '', '', '', '']);
+      breakdownIdx++;
+    } else {
+      const r = sorted[0];
       ceBreakdownBody.push([
         s.regNumber, s.fullName,
-        `${MONTHS[sorted[i].month]} ${sorted[i].year}`,
-        sorted[i].theoryScore.toFixed(1),
-        sorted[i].mcqScore.toFixed(1),
-        sorted[i].attendScore.toFixed(1),
-        sorted[i].notesScore.toFixed(1),
-        sorted[i].totalCE.toFixed(1),
-        `${running.toFixed(1)} / ${(i + 1) * 20}`,
+        `${MONTHS[r.month]} ${r.year}`,
+        r.theoryScore.toFixed(1), r.mcqScore.toFixed(1),
+        r.attendScore.toFixed(1), r.notesScore.toFixed(1),
+        r.totalCE.toFixed(1), `${r.totalCE.toFixed(1)} / 20`,
       ]);
       breakdownIdx++;
     }
@@ -1148,6 +1198,13 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fillColor = [15, 23, 42];
         data.cell.styles.textColor = [255, 255, 255];
+        return;
+      }
+      if (data.section === 'body' && batchCELineIndices.has(data.row.index)) {
+        data.cell.styles.fontStyle = 'italic';
+        data.cell.styles.fillColor = [238, 242, 255];
+        data.cell.styles.textColor = [67, 56, 202];
+        data.cell.styles.halign = 'left';
         return;
       }
       if (data.section === 'body' && data.column.index === 7) {
