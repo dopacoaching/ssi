@@ -146,10 +146,11 @@ function applyStyles(
     firstColLeft?: boolean;
     colorRules?: ColorRule[];
     hasSumRow?: boolean;
+    hasSumRowFirst?: boolean;
   }
 ) {
   const range = XLSX.utils.decode_range(ws['!ref']!);
-  const { firstColLeft = false, colorRules = [], hasSumRow = false } = options ?? {};
+  const { firstColLeft = false, colorRules = [], hasSumRow = false, hasSumRowFirst = false } = options ?? {};
 
   for (let R = range.s.r; R <= range.e.r; ++R) {
     for (let C2 = range.s.c; C2 <= range.e.c; ++C2) {
@@ -163,7 +164,7 @@ function applyStyles(
         // Header row
         cell.s = headerStyle(!(firstColLeft && C2 === 0));
       } else {
-        const isSumRow = hasSumRow && R === range.e.r;
+        const isSumRow = (hasSumRow && R === range.e.r) || (hasSumRowFirst && R === 1);
         const isEven = R % 2 === 1; // row 1 = first data row = even appearance
 
         if (isSumRow) {
@@ -262,42 +263,47 @@ export function exportMonthlyExcel(tests: MonthlyRow[], studentName: string) {
 // ── CE Records Excel ──────────────────────────────────────────────────────────
 
 export function exportCEExcel(records: CERow[], studentName: string) {
-  // Sheet 1 – Summary (sorted chronologically for cumulative column)
+  // Sheet 1 – Summary: TOTAL row first (when 2+ months), then per-month rows
   const sortedRecs = [...records].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-  let ceRunning = 0;
-  const summary = sortedRecs.map((r, i) => {
-    ceRunning += r.totalCE;
-    return {
-      'Period':              `${MONTHS[r.month]} ${r.year}`,
-      'Theory (/10)':        parseFloat(r.theoryScore.toFixed(2)),
-      'MCQ (/5)':            parseFloat(r.mcqScore.toFixed(2)),
-      'Attendance (/3)':     parseFloat(r.attendScore.toFixed(2)),
-      'Notes (/2)':          parseFloat(r.notesScore.toFixed(2)),
-      'Total CE (/20)':      parseFloat(r.totalCE.toFixed(2)),
-      'Cumulative CE':       `${ceRunning.toFixed(2)} / ${(i + 1) * 20}`,
-      'Date Added':          new Date(r.createdAt).toLocaleDateString(),
-    };
-  });
   const hasTotalRow = sortedRecs.length >= 2;
+  const summary: object[] = [];
+
   if (hasTotalRow) {
+    const totalCE = sortedRecs.reduce((a, r) => a + r.totalCE, 0);
     summary.push({
       'Period':          `TOTAL (${sortedRecs.length} months)`,
       'Theory (/10)':    parseFloat(sortedRecs.reduce((a, r) => a + r.theoryScore, 0).toFixed(2)),
       'MCQ (/5)':        parseFloat(sortedRecs.reduce((a, r) => a + r.mcqScore,    0).toFixed(2)),
       'Attendance (/3)': parseFloat(sortedRecs.reduce((a, r) => a + r.attendScore, 0).toFixed(2)),
       'Notes (/2)':      parseFloat(sortedRecs.reduce((a, r) => a + r.notesScore,  0).toFixed(2)),
-      'Total CE (/20)':  parseFloat(ceRunning.toFixed(2)),
-      'Cumulative CE':   `${ceRunning.toFixed(2)} / ${sortedRecs.length * 20}`,
+      'Total CE (/20)':  parseFloat(totalCE.toFixed(2)),
+      'Cumulative CE':   `${totalCE.toFixed(2)} / ${sortedRecs.length * 20}`,
       'Date Added':      '',
     });
   }
+  let ceRunning = 0;
+  for (let i = 0; i < sortedRecs.length; i++) {
+    const r = sortedRecs[i];
+    ceRunning += r.totalCE;
+    summary.push({
+      'Period':          `${MONTHS[r.month]} ${r.year}`,
+      'Theory (/10)':    parseFloat(r.theoryScore.toFixed(2)),
+      'MCQ (/5)':        parseFloat(r.mcqScore.toFixed(2)),
+      'Attendance (/3)': parseFloat(r.attendScore.toFixed(2)),
+      'Notes (/2)':      parseFloat(r.notesScore.toFixed(2)),
+      'Total CE (/20)':  parseFloat(r.totalCE.toFixed(2)),
+      'Cumulative CE':   `${ceRunning.toFixed(2)} / ${(i + 1) * 20}`,
+      'Date Added':      new Date(r.createdAt).toLocaleDateString(),
+    });
+  }
+
   const wsSummary = XLSX.utils.json_to_sheet(summary);
   applyAutoWidth(wsSummary, summary);
   setRowHeight(wsSummary, summary.length);
   applyStyles(wsSummary, summary, {
     firstColLeft: true,
     colorRules: [{ type: 'ce', colIndex: 5 }],
-    hasSumRow: hasTotalRow,
+    hasSumRowFirst: hasTotalRow,
   });
 
   // Sheet 2 – Subject marks
@@ -383,10 +389,24 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
   }
   XLSX.utils.book_append_sheet(wb, wsCE, 'CE Records');
 
-  // Sheet 2 – CE Per Month: one row per (student × month) + TOTAL row per student when 2+ months
+  // Sheet 2 – CE Per Month: TOTAL row first per student (when 2+ months), then per-month rows
   const cePerMonthRows: object[] = [];
   for (const s of students) {
     const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+    if (sorted.length >= 2) {
+      const totalCE = sorted.reduce((a, r) => a + r.totalCE, 0);
+      cePerMonthRows.push({
+        'Reg No.':         s.regNumber,
+        'Name':            s.fullName,
+        'Period':          'TOTAL',
+        'Theory (/10)':    parseFloat(sorted.reduce((a, r) => a + r.theoryScore, 0).toFixed(2)),
+        'MCQ (/5)':        parseFloat(sorted.reduce((a, r) => a + r.mcqScore,    0).toFixed(2)),
+        'Attendance (/3)': parseFloat(sorted.reduce((a, r) => a + r.attendScore, 0).toFixed(2)),
+        'Notes (/2)':      parseFloat(sorted.reduce((a, r) => a + r.notesScore,  0).toFixed(2)),
+        'CE (/20)':        parseFloat(totalCE.toFixed(2)),
+        'Cumulative CE':   `${totalCE.toFixed(2)} / ${sorted.length * 20}`,
+      });
+    }
     let running = 0;
     for (let i = 0; i < sorted.length; i++) {
       running += sorted[i].totalCE;
@@ -400,19 +420,6 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
         'Notes (/2)':      parseFloat(sorted[i].notesScore.toFixed(2)),
         'CE (/20)':        parseFloat(sorted[i].totalCE.toFixed(2)),
         'Cumulative CE':   `${running.toFixed(2)} / ${(i + 1) * 20}`,
-      });
-    }
-    if (sorted.length >= 2) {
-      cePerMonthRows.push({
-        'Reg No.':         s.regNumber,
-        'Name':            s.fullName,
-        'Period':          'TOTAL',
-        'Theory (/10)':    parseFloat(sorted.reduce((a, r) => a + r.theoryScore, 0).toFixed(2)),
-        'MCQ (/5)':        parseFloat(sorted.reduce((a, r) => a + r.mcqScore,    0).toFixed(2)),
-        'Attendance (/3)': parseFloat(sorted.reduce((a, r) => a + r.attendScore, 0).toFixed(2)),
-        'Notes (/2)':      parseFloat(sorted.reduce((a, r) => a + r.notesScore,  0).toFixed(2)),
-        'CE (/20)':        parseFloat(running.toFixed(2)),
-        'Cumulative CE':   `${running.toFixed(2)} / ${sorted.length * 20}`,
       });
     }
   }
@@ -649,10 +656,27 @@ export function exportCEPDF(records: CERow[], studentName: string) {
   const doc = basePDF('CE Records Report', studentName);
 
   const sortedForPDF = [...records].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+  const ceBodyPDF: string[][] = [];
+  const pdfTotalIdx = sortedForPDF.length >= 2 ? 0 : -1;
+
+  if (sortedForPDF.length >= 2) {
+    const totalCE = sortedForPDF.reduce((a, r) => a + r.totalCE, 0);
+    ceBodyPDF.push([
+      'TOTAL',
+      sortedForPDF.reduce((a, r) => a + r.theoryScore, 0).toFixed(2),
+      sortedForPDF.reduce((a, r) => a + r.mcqScore,    0).toFixed(2),
+      sortedForPDF.reduce((a, r) => a + r.attendScore, 0).toFixed(2),
+      sortedForPDF.reduce((a, r) => a + r.notesScore,  0).toFixed(2),
+      totalCE.toFixed(2),
+      `${totalCE.toFixed(2)} / ${sortedForPDF.length * 20}`,
+      '',
+    ]);
+  }
   let pdfRunning = 0;
-  const ceBodyPDF = sortedForPDF.map((r, i) => {
+  for (let i = 0; i < sortedForPDF.length; i++) {
+    const r = sortedForPDF[i];
     pdfRunning += r.totalCE;
-    return [
+    ceBodyPDF.push([
       `${MONTHS[r.month]} ${r.year}`,
       r.theoryScore.toFixed(2),
       r.mcqScore.toFixed(2),
@@ -661,19 +685,6 @@ export function exportCEPDF(records: CERow[], studentName: string) {
       r.totalCE.toFixed(2),
       `${pdfRunning.toFixed(2)} / ${(i + 1) * 20}`,
       new Date(r.createdAt).toLocaleDateString(),
-    ];
-  });
-  const pdfTotalIdx = sortedForPDF.length >= 2 ? sortedForPDF.length : -1;
-  if (sortedForPDF.length >= 2) {
-    ceBodyPDF.push([
-      'TOTAL',
-      sortedForPDF.reduce((a, r) => a + r.theoryScore, 0).toFixed(2),
-      sortedForPDF.reduce((a, r) => a + r.mcqScore,    0).toFixed(2),
-      sortedForPDF.reduce((a, r) => a + r.attendScore, 0).toFixed(2),
-      sortedForPDF.reduce((a, r) => a + r.notesScore,  0).toFixed(2),
-      pdfRunning.toFixed(2),
-      `${pdfRunning.toFixed(2)} / ${sortedForPDF.length * 20}`,
-      '',
     ]);
   }
 
@@ -1091,6 +1102,20 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
   let breakdownIdx = 0;
   for (const s of students) {
     const sorted = [...s.ceRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+    if (sorted.length >= 2) {
+      const totalCE = sorted.reduce((a, r) => a + r.totalCE, 0);
+      batchTotalRowIndices.add(breakdownIdx);
+      ceBreakdownBody.push([
+        s.regNumber, s.fullName, 'TOTAL',
+        sorted.reduce((a, r) => a + r.theoryScore, 0).toFixed(1),
+        sorted.reduce((a, r) => a + r.mcqScore,    0).toFixed(1),
+        sorted.reduce((a, r) => a + r.attendScore, 0).toFixed(1),
+        sorted.reduce((a, r) => a + r.notesScore,  0).toFixed(1),
+        totalCE.toFixed(1),
+        `${totalCE.toFixed(1)} / ${sorted.length * 20}`,
+      ]);
+      breakdownIdx++;
+    }
     let running = 0;
     for (let i = 0; i < sorted.length; i++) {
       running += sorted[i].totalCE;
@@ -1103,19 +1128,6 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
         sorted[i].notesScore.toFixed(1),
         sorted[i].totalCE.toFixed(1),
         `${running.toFixed(1)} / ${(i + 1) * 20}`,
-      ]);
-      breakdownIdx++;
-    }
-    if (sorted.length >= 2) {
-      batchTotalRowIndices.add(breakdownIdx);
-      ceBreakdownBody.push([
-        s.regNumber, s.fullName, 'TOTAL',
-        sorted.reduce((a, r) => a + r.theoryScore, 0).toFixed(1),
-        sorted.reduce((a, r) => a + r.mcqScore,    0).toFixed(1),
-        sorted.reduce((a, r) => a + r.attendScore, 0).toFixed(1),
-        sorted.reduce((a, r) => a + r.notesScore,  0).toFixed(1),
-        running.toFixed(1),
-        `${running.toFixed(1)} / ${sorted.length * 20}`,
       ]);
       breakdownIdx++;
     }
