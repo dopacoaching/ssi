@@ -22,11 +22,16 @@ function computeMCQScore(mcqPct) {
   return 1.0;
 }
 
-function computeAttendanceScore(attendancePct, hasMedCert) {
-  if (attendancePct === 100) return 3.0;
-  if (attendancePct >= 95) return hasMedCert ? 3.0 : 2.5;
-  if (attendancePct >= 90) return hasMedCert ? 2.5 : 2.0;
-  return hasMedCert ? 1.5 : 1.0;
+// Attendance (max 3) is graded on the number of leave days taken in the month.
+// A medical certificate exempts the student entirely — they keep full attendance.
+//   medical cert → 3 | 0 leaves → 3 | 1 leave → 2 | 2 leaves → 1 | 3+ leaves → 0
+function computeAttendanceScore(leaveDays, hasMedCert) {
+  if (hasMedCert) return 3.0;
+  const days = Number(leaveDays) || 0;
+  if (days <= 0) return 3.0;
+  if (days === 1) return 2.0;
+  if (days === 2) return 1.0;
+  return 0.0;
 }
 
 function computeNotesScore(notesStatus) {
@@ -38,7 +43,7 @@ function computeNotesScore(notesStatus) {
 function computeCE(data) {
   const theoryScore = computeTheoryScore(data);
   const mcqScore    = data.mcqMax > 0 ? computeMCQScore(data.mcqPct) : 0;
-  const attendScore = computeAttendanceScore(data.attendancePct, data.hasMedCert);
+  const attendScore = computeAttendanceScore(data.leaveDays, data.hasMedCert);
   const notesScore  = computeNotesScore(data.notesStatus);
   const totalCE     = theoryScore + mcqScore + attendScore + notesScore;
   return { theoryScore, mcqScore, attendScore, notesScore, totalCE };

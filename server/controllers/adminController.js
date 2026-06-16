@@ -209,6 +209,60 @@ async function toggleBatchApproval(req, res) {
   }
 }
 
+async function listBatchWorkingDays(req, res) {
+  const { id } = req.params;
+  if (req.user.role === 'TEACHER' && !req.user.batchIds.includes(id)) {
+    return forbidden(res);
+  }
+  const records = await prisma.batchWorkingDays.findMany({
+    where: { batchId: id },
+    orderBy: [{ year: 'desc' }, { month: 'desc' }]
+  });
+  return ok(res, records);
+}
+
+async function setBatchWorkingDays(req, res) {
+  const { id } = req.params;
+  const { month, year, workingDays } = req.body;
+
+  if (req.user.role === 'TEACHER' && !req.user.batchIds.includes(id)) {
+    return forbidden(res);
+  }
+
+  if (month == null || year == null || workingDays == null) {
+    return badRequest(res, 'Month, year and working days are required');
+  }
+
+  const m = Number(month), y = Number(year), wd = Number(workingDays);
+  if (!Number.isInteger(m) || m < 1 || m > 12) return badRequest(res, 'Month must be 1–12');
+  if (!Number.isInteger(y) || y < 2000) return badRequest(res, 'Year must be 2000 or later');
+  if (!Number.isInteger(wd) || wd < 1 || wd > 31) return badRequest(res, 'Working days must be between 1 and 31');
+
+  const now = new Date();
+  if (y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth() + 1)) {
+    return badRequest(res, 'Cannot set working days for a future month');
+  }
+
+  // Teachers cannot edit a month the admin has approved and locked.
+  if (req.user.role === 'TEACHER') {
+    const approval = await prisma.batchApproval.findFirst({ where: { batchId: id, month: m, year: y } });
+    if (approval) return forbidden(res, 'This month has been approved by admin and is locked');
+  }
+
+  const batchInfo = await batchModel.findById(id);
+  const batchName = batchInfo?.name || id;
+
+  const record = await prisma.batchWorkingDays.upsert({
+    where: { batchId_month_year: { batchId: id, month: m, year: y } },
+    create: { batchId: id, month: m, year: y, workingDays: wd },
+    update: { workingDays: wd }
+  });
+
+  logAudit(req, 'UPDATE', 'BatchWorkingDays', record.id,
+    `Set working days for batch "${batchName}" ${MONTHS[m]} ${y} → ${wd} days`);
+  return ok(res, record, 'Working days saved');
+}
+
 async function transferStudents(req, res) {
   const { studentIds, targetBatchId } = req.body;
 
@@ -246,5 +300,7 @@ module.exports = {
   alerts,
   listBatchApprovals,
   toggleBatchApproval,
+  listBatchWorkingDays,
+  setBatchWorkingDays,
   transferStudents
 };

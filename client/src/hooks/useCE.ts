@@ -18,6 +18,8 @@ export interface CERecord {
   mcqMax: number;
   mcqPct: number;
   attendancePct: number;
+  workingDays: number;
+  leaveDays: number;
   hasMedCert: boolean;
   notesStatus: 'COMPLETE' | 'PARTIAL' | 'INCOMPLETE';
   theoryScore: number;
@@ -46,7 +48,7 @@ export function useCE(studentId: string) {
 
   const upsert = useCallback(async (payload: {
     month: number; year: number;
-    attendancePct: number; hasMedCert: boolean;
+    leaveDays: number; hasMedCert: boolean;
     notesStatus: 'COMPLETE' | 'PARTIAL' | 'INCOMPLETE';
   }) => {
     const { data } = await api.post(`/students/${studentId}/ce`, payload);

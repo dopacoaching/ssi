@@ -73,14 +73,20 @@ Based on percentage scored:
 
 ### Attendance (max 3 pts)
 
-| Attendance % | Score |
-|---|---|
-| 100% | 3 |
-| 95–99% | 2.5 |
-| 90–94% | 2 |
-| < 90% | 1 |
+Attendance is graded on the number of **leave days** a student takes in the month.
+The teacher first sets the **total working days** for the batch each month (once per
+batch, on the Students page), then records each student's leave days.
 
-A medical certificate adds +0.5 to the attendance score (capped at 3).
+| Leave days in month | Score |
+|---|---|
+| 0 | 3 |
+| 1 | 2 |
+| 2 | 1 |
+| 3 or more | 0 |
+
+A student with a **medical certificate** keeps full attendance (3 pts) regardless of
+leave days taken. Working days and leave days are shown in each student's individual
+report (and the student/parent portal), but are not included in the batch "All Marks" export.
 
 ### Notes (max 2 pts)
 

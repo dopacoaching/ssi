@@ -37,6 +37,20 @@ model Batch {
   updatedAt DateTime        @updatedAt
   students  Student[]
   approvals BatchApproval[]
+  workingDays BatchWorkingDays[]
+}
+
+model BatchWorkingDays {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  batchId     String   @db.ObjectId
+  batch       Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  month       Int
+  year        Int
+  workingDays Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([batchId, month, year])
 }
 
 model BatchApproval {
@@ -95,6 +109,8 @@ model CERecord {
   mcqMax          Float       @default(100)
   mcqPct          Float
   attendancePct   Float
+  workingDays     Int         @default(0)
+  leaveDays       Int         @default(0)
   hasMedCert      Boolean     @default(false)
   notesStatus     NotesStatus
   theoryScore     Float

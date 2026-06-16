@@ -20,6 +20,10 @@ router.get('/alerts',                verifyToken, requireRole('ADMIN', 'TEACHER'
 
 router.get('/batches/:id/approvals',  verifyToken, requireRole('ADMIN', 'TEACHER'), asyncHandler(ctrl.listBatchApprovals));
 router.post('/batches/:id/approvals', ...admin, asyncHandler(ctrl.toggleBatchApproval));
+
+router.get('/batches/:id/working-days',  verifyToken, requireRole('ADMIN', 'TEACHER'), asyncHandler(ctrl.listBatchWorkingDays));
+router.post('/batches/:id/working-days', verifyToken, requireRole('ADMIN', 'TEACHER'), asyncHandler(ctrl.setBatchWorkingDays));
+
 router.post('/batches/transfer',          ...admin, asyncHandler(ctrl.transferStudents));
 
 router.get('/audit', ...admin, asyncHandler(auditCtrl.list));

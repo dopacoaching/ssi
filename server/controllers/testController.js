@@ -128,7 +128,11 @@ async function syncCEForMonth(studentId, month, year) {
     mcqMarks,
     mcqMax,
     mcqPct: mcqMax > 0 ? (mcqMarks / mcqMax) * 100 : 0,
-    attendancePct: existing ? existing.attendancePct : 0,
+    // No attendance recorded yet → assume full attendance (0 leaves), matching the
+    // leave-based scoring default, so the attendance % and attendance marks stay consistent.
+    attendancePct: existing ? existing.attendancePct : 100,
+    workingDays: existing ? existing.workingDays : 0,
+    leaveDays: existing ? existing.leaveDays : 0,
     hasMedCert: existing ? existing.hasMedCert : false,
     notesStatus: existing ? existing.notesStatus : "INCOMPLETE",
   };

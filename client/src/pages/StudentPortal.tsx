@@ -202,6 +202,38 @@ export default function StudentPortal() {
                       </div>
                     </div>
                   ))}
+
+                  {/* Monthly working days vs leave taken */}
+                  {records.some(r => r.workingDays > 0) && (
+                    <div className="mt-6 pt-6 border-t border-slate-100 dark:border-gray-700">
+                      <p className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Working Days &amp; Leave</p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 dark:text-gray-500">
+                              <th className="py-2 pr-4 font-bold">Month</th>
+                              <th className="py-2 px-4 font-bold text-center">Working Days</th>
+                              <th className="py-2 px-4 font-bold text-center">Leave Taken</th>
+                              <th className="py-2 pl-4 font-bold text-right">Days Present</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-gray-700">
+                            {records.filter(r => r.workingDays > 0).map(r => (
+                              <tr key={r.id} className="text-slate-700 dark:text-gray-200">
+                                <td className="py-2.5 pr-4 font-semibold">{MONTHS[r.month]} {r.year}</td>
+                                <td className="py-2.5 px-4 text-center">{r.workingDays}</td>
+                                <td className="py-2.5 px-4 text-center">
+                                  {r.leaveDays}
+                                  {r.hasMedCert && <span className="ml-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">(medical)</span>}
+                                </td>
+                                <td className="py-2.5 pl-4 text-right font-semibold">{Math.max(0, r.workingDays - r.leaveDays)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

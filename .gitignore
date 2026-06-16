@@ -32,3 +32,6 @@ screenshot_tabs.js
 screenshots/
 
 .vercel
+
+# Local Claude Code agent state (worktrees, memory)
+.claude/

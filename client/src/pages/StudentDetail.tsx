@@ -804,6 +804,7 @@ export default function StudentDetail() {
             {isTeacher && showCEForm && (
               <CEForm
                 studentId={id!}
+                batchId={student?.batchId ?? ''}
                 existingRecords={records}
                 onSaved={() => { setShowCEForm(false); fetchCE(); }}
               />
@@ -870,6 +871,13 @@ export default function StudentDetail() {
                           </div>
                         ))}
                       </div>
+                      {r.workingDays > 0 && (
+                        <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                          <span>Working days: <span className="font-semibold text-gray-700 dark:text-gray-200">{r.workingDays}</span></span>
+                          <span>Leave taken: <span className="font-semibold text-gray-700 dark:text-gray-200">{r.leaveDays}</span></span>
+                          {r.hasMedCert && <span className="text-emerald-600 dark:text-emerald-400 font-medium">Medical certificate — full attendance</span>}
+                        </div>
+                      )}
                     </div>
                   ))
                 }

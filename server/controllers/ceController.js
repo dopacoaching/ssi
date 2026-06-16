@@ -105,9 +105,9 @@ async function upsert(req, res) {
   const student = await guardStudent(req, res);
   if (!student) return;
 
-  const { month, year, attendancePct, hasMedCert = false, notesStatus } = req.body;
+  const { month, year, leaveDays, hasMedCert = false, notesStatus } = req.body;
 
-  if ([month, year, attendancePct, notesStatus].some(v => v == null)) {
+  if ([month, year, leaveDays, notesStatus].some(v => v == null)) {
     return badRequest(res, 'Missing required CE fields');
   }
 
@@ -118,9 +118,9 @@ async function upsert(req, res) {
   const m = Number(month), y = Number(year);
   if (!isFinite(m) || m < 1 || m > 12) return badRequest(res, 'Month must be 1–12');
   if (!isFinite(y) || y < 2000) return badRequest(res, 'Year must be 2000 or later');
-  const att = Number(attendancePct);
-  if (!isFinite(att) || att < 0 || att > 100)
-    return badRequest(res, 'attendancePct must be between 0 and 100');
+  const leave = Number(leaveDays);
+  if (!Number.isInteger(leave) || leave < 0)
+    return badRequest(res, 'Leave days must be a whole number of 0 or more');
 
   const now = new Date();
   if (y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth() + 1)) {
@@ -132,12 +132,28 @@ async function upsert(req, res) {
     return forbidden(res, 'This month has been approved by admin and is locked');
   }
 
+  // Working days are set once per batch per month; attendance can't be graded without them.
+  const wdRecord = await prisma.batchWorkingDays.findFirst({
+    where: { batchId: student.batchId, month: m, year: y }
+  });
+  if (!wdRecord) {
+    return badRequest(res, `Set the total working days for this batch for ${MONTHS[m]} ${y} before recording attendance`);
+  }
+  const workingDays = wdRecord.workingDays;
+  if (leave > workingDays) {
+    return badRequest(res, `Leave days (${leave}) cannot exceed the ${workingDays} working days for ${MONTHS[m]} ${y}`);
+  }
+
+  // Derived percentage (rounded to a whole percent) kept for charts/at-risk alerts;
+  // the score itself is driven by leave days.
+  const att = workingDays > 0 ? Math.round(((workingDays - leave) / workingDays) * 100) : 100;
+
   const marks = await aggregateTestMarks(req.params.id, m, y);
   const mcqPct = marks.mcqMax > 0 ? (marks.mcqMarks / marks.mcqMax) * 100 : 0;
 
   const scores = computeCE({
     ...marks, mcqPct,
-    attendancePct: att,
+    leaveDays: leave,
     hasMedCert,
     notesStatus,
   });
@@ -146,6 +162,8 @@ async function upsert(req, res) {
     month: m, year: y,
     ...marks, mcqPct,
     attendancePct: att,
+    workingDays,
+    leaveDays: leave,
     hasMedCert,
     notesStatus,
     ...scores,

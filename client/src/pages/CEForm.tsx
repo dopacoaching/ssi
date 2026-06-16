@@ -3,9 +3,11 @@ import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { useCE, CERecord } from '../hooks/useCE';
 import { RootState } from '../store';
+import api from '../utils/api';
 
 interface Props {
   studentId: string;
+  batchId: string;
   existingRecords?: CERecord[];
   onSaved: () => void;
 }
@@ -17,7 +19,7 @@ const inputCls = 'w-full border border-gray-300 dark:border-gray-600 dark:bg-gra
 function blankForm(month: number, year: number) {
   return {
     month: month.toString(), year: year.toString(),
-    attendancePct: '',
+    leaveDays: '',
     hasMedCert: false,
     notesStatus: 'COMPLETE' as 'COMPLETE' | 'PARTIAL' | 'INCOMPLETE',
   };
@@ -26,19 +28,33 @@ function blankForm(month: number, year: number) {
 function recordToForm(r: CERecord) {
   return {
     month: r.month.toString(), year: r.year.toString(),
-    attendancePct: r.attendancePct.toString(),
+    leaveDays: r.leaveDays.toString(),
     hasMedCert: r.hasMedCert,
     notesStatus: r.notesStatus,
   };
 }
 
-export default function CEForm({ studentId, existingRecords = [], onSaved }: Props) {
+export default function CEForm({ studentId, batchId, existingRecords = [], onSaved }: Props) {
   const { upsert } = useCE(studentId);
   const user = useSelector((s: RootState) => s.auth.user);
   const now = new Date();
 
   const [form, setForm] = useState(() => blankForm(now.getMonth() + 1, now.getFullYear()));
   const [saving, setSaving] = useState(false);
+  const [workingDaysMap, setWorkingDaysMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!batchId) return;
+    api.get(`/admin/batches/${batchId}/working-days`)
+      .then((res) => {
+        const map: Record<string, number> = {};
+        for (const w of res.data.data || []) map[`${w.year}-${w.month}`] = w.workingDays;
+        setWorkingDaysMap(map);
+      })
+      .catch(() => {});
+  }, [batchId]);
+
+  const workingDays = workingDaysMap[`${Number(form.year)}-${Number(form.month)}`];
 
   useEffect(() => {
     const m = Number(form.month);
@@ -70,11 +86,24 @@ export default function CEForm({ studentId, existingRecords = [], onSaved }: Pro
       toast.error('Cannot add CE records for a future month');
       return;
     }
+    if (workingDays == null) {
+      toast.error(`Working days for ${MONTHS[m]} ${y} haven't been set for this batch yet`);
+      return;
+    }
+    const leave = Number(form.leaveDays);
+    if (!Number.isInteger(leave) || leave < 0) {
+      toast.error('Leave days must be a whole number of 0 or more');
+      return;
+    }
+    if (leave > workingDays) {
+      toast.error(`Leave days cannot exceed the ${workingDays} working days`);
+      return;
+    }
     setSaving(true);
     try {
       await upsert({
         month: m, year: y,
-        attendancePct: Number(form.attendancePct),
+        leaveDays: leave,
         hasMedCert: form.hasMedCert,
         notesStatus: form.notesStatus,
       });
@@ -118,16 +147,28 @@ export default function CEForm({ studentId, existingRecords = [], onSaved }: Pro
       </div>
 
       <div className="space-y-3">
+        {workingDays == null ? (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-400">
+            No working days set for {MONTHS[Number(form.month)]} {form.year} in this batch yet. Set them on the Students page (Batch Working Days) before recording attendance.
+          </div>
+        ) : (
+          <div className="bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 flex items-center justify-between">
+            <span>Total working days this month</span>
+            <span className="font-semibold text-gray-800 dark:text-gray-100">{workingDays} days</span>
+          </div>
+        )}
+
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">Attendance % (0–100)</label>
-          <input type="number" required min={0} max={100} value={form.attendancePct} disabled={isLocked}
-            onChange={(e) => set('attendancePct', e.target.value)} className={inputCls} />
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">Leave days taken</label>
+          <input type="number" required min={0} max={workingDays ?? undefined} step={1} value={form.leaveDays} disabled={isLocked || workingDays == null}
+            onChange={(e) => set('leaveDays', e.target.value)} className={inputCls} placeholder="e.g. 0, 1, 2…" />
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">0 leave → 3 marks · 1 → 2 · 2 → 1 · 3+ → 0. Medical certificate keeps full attendance.</p>
         </div>
 
         <div className="flex items-center gap-2 pt-1">
           <input type="checkbox" id="medcert" checked={form.hasMedCert} disabled={isLocked}
             onChange={(e) => set('hasMedCert', e.target.checked)} className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-indigo-600 focus:ring-indigo-500 disabled:opacity-60" />
-          <label htmlFor="medcert" className="text-xs text-gray-600 dark:text-gray-400">Has Medical Certificate (+0.5 mitigation)</label>
+          <label htmlFor="medcert" className="text-xs text-gray-600 dark:text-gray-400">Has Medical Certificate (full attendance, no marks lost)</label>
         </div>
 
         <div>

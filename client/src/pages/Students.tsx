@@ -38,6 +38,10 @@ export default function Students() {
   const [lockForm, setLockForm] = useState({ month: new Date().getMonth() + 1, year: new Date().getFullYear() });
   const [locking, setLocking] = useState(false);
 
+  const [workingDaysList, setWorkingDaysList] = useState<{ month: number; year: number; workingDays: number }[]>([]);
+  const [wdForm, setWdForm] = useState({ month: new Date().getMonth() + 1, year: new Date().getFullYear(), workingDays: '' });
+  const [savingWd, setSavingWd] = useState(false);
+
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [transferTargetBatch, setTransferTargetBatch] = useState<string>('');
   const [transferring, setTransferring] = useState<boolean>(false);
@@ -93,6 +97,35 @@ export default function Students() {
     }
   }, []);
 
+  const fetchWorkingDays = useCallback(async (batchId: string) => {
+    try {
+      const res = await api.get(`/admin/batches/${batchId}/working-days`);
+      setWorkingDaysList(res.data.data || []);
+    } catch {
+      toast.error('Failed to load working days');
+    }
+  }, []);
+
+  async function handleSaveWorkingDays(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedBatch) return;
+    setSavingWd(true);
+    try {
+      await api.post(`/admin/batches/${selectedBatch}/working-days`, {
+        month: wdForm.month,
+        year: wdForm.year,
+        workingDays: Number(wdForm.workingDays),
+      });
+      toast.success('Working days saved');
+      setWdForm({ ...wdForm, workingDays: '' });
+      fetchWorkingDays(selectedBatch);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to save working days');
+    } finally {
+      setSavingWd(false);
+    }
+  }
+
   async function handleLockToggle(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedBatch) return;
@@ -132,6 +165,7 @@ export default function Students() {
   useEffect(() => { if (user?.role === 'ADMIN') fetchTeachers().catch(() => {}); }, [fetchTeachers, user?.role]);
   useEffect(() => { if (selectedBatch) fetchByBatch(selectedBatch).catch(() => {}); }, [selectedBatch, fetchByBatch]);
   useEffect(() => { if (selectedBatch) fetchApprovals(selectedBatch).catch(() => {}); }, [selectedBatch, fetchApprovals]);
+  useEffect(() => { if (selectedBatch) fetchWorkingDays(selectedBatch).catch(() => {}); }, [selectedBatch, fetchWorkingDays]);
   useEffect(() => { setSelectedStudents([]); }, [selectedBatch]);
 
   function teachersForBatch(batchId: string) {
@@ -430,6 +464,84 @@ export default function Students() {
           </div>
         )}
 
+        {/* Batch Working Days Manager Card */}
+        {selectedBatch && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 mb-5 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-tight flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Monthly Working Days
+                </h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  Set the total working days for this batch each month. Required before recording student attendance &amp; leave.
+                </p>
+              </div>
+
+              <form onSubmit={handleSaveWorkingDays} className="flex flex-wrap items-center gap-2">
+                <select
+                  required
+                  value={wdForm.month}
+                  onChange={(e) => setWdForm({ ...wdForm, month: Number(e.target.value) })}
+                  className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                >
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>{MONTHS[i + 1]}</option>
+                  ))}
+                </select>
+                <select
+                  required
+                  value={wdForm.year}
+                  onChange={(e) => setWdForm({ ...wdForm, year: Number(e.target.value) })}
+                  className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                >
+                  {Array.from({ length: 5 }, (_, i) => {
+                    const yr = new Date().getFullYear() - i;
+                    return <option key={yr} value={yr}>{yr}</option>;
+                  })}
+                </select>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  max={31}
+                  step={1}
+                  placeholder="Days"
+                  value={wdForm.workingDays}
+                  onChange={(e) => setWdForm({ ...wdForm, workingDays: e.target.value })}
+                  className="w-20 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+                <button
+                  type="submit"
+                  disabled={savingWd}
+                  className="bg-indigo-600 text-white text-xs px-3.5 py-2 rounded-xl hover:bg-indigo-700 font-semibold transition-colors disabled:opacity-60 shadow-sm"
+                >
+                  {savingWd ? 'Saving...' : 'Save'}
+                </button>
+              </form>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              {workingDaysList.length === 0 ? (
+                <p className="text-xs text-gray-400 dark:text-gray-500 italic">No working days set for this batch yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {workingDaysList.map((w) => (
+                    <div
+                      key={`${w.month}-${w.year}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl text-xs text-indigo-700 dark:text-indigo-400 font-medium"
+                    >
+                      {MONTHS[w.month]} {w.year}: <span className="font-bold">{w.workingDays} days</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Export buttons */}
         {selectedBatch && students.length > 0 && (
           <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -582,7 +694,7 @@ export default function Students() {
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-gray-700 dark:text-gray-300"
+                      className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-gray-700"
                     >
                       <option value="default">Default Order</option>
                       <option value="name">Name (A to Z)</option>
