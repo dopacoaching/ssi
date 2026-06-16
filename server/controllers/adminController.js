@@ -166,6 +166,9 @@ async function alerts(req, res) {
 
 async function listBatchApprovals(req, res) {
   const { id } = req.params;
+  if (req.user.role === 'TEACHER' && !req.user.batchIds.includes(id)) {
+    return forbidden(res);
+  }
   const approvals = await prisma.batchApproval.findMany({
     where: { batchId: id },
     orderBy: [{ year: 'desc' }, { month: 'desc' }]

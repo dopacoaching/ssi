@@ -13,6 +13,4 @@ const findAll = () =>
 
 const update = (id, data) => prisma.user.update({ where: { id }, data });
 
-const deactivate = (id) => prisma.user.update({ where: { id }, data: { isActive: false } });
-
-module.exports = { findByEmail, findById, create, findAll, update, deactivate };
+module.exports = { findByEmail, findById, create, findAll, update };

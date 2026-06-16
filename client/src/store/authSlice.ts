@@ -26,12 +26,9 @@ const authSlice = createSlice({
       state.user = null;
       state.checked = true;
     },
-    setChecked(state) {
-      state.checked = true;
-    },
   },
 });
 
-export const { setUser, clearUser, setChecked } = authSlice.actions;
+export const { setUser, clearUser } = authSlice.actions;
 export default authSlice.reducer;
 export type { AuthUser };

@@ -24,8 +24,8 @@ export default function StudentPortal() {
 
   const { fetchOne } = useStudents();
   const { records, fetch: fetchCE } = useCE(id!);
-  const { weekly, monthly, loading: testLoading, fetchAll } = useTests(id!);
-  const { remarks, loading: remarkLoading, fetch: fetchRemarks } = useRemarks(id!);
+  const { weekly, monthly, fetchAll } = useTests(id!);
+  const { remarks, fetch: fetchRemarks } = useRemarks(id!);
 
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
