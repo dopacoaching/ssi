@@ -31,9 +31,13 @@ export function usePWAInstall() {
       e.preventDefault();
       setAndroidPrompt(e as BeforeInstallPromptEvent);
     };
+    const installedHandler = () => { setInstalled(true); setAndroidPrompt(null); };
     window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => { setInstalled(true); setAndroidPrompt(null); });
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', installedHandler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installedHandler);
+    };
   }, [installed]);
 
   async function installAndroid() {

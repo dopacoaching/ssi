@@ -26,7 +26,20 @@ async function updateBatch(req, res) {
   const batch = await batchModel.findById(req.params.id);
   if (!batch) return notFound(res, 'Batch not found');
   const { name, year } = req.body;
-  const updated = await batchModel.update(req.params.id, { name, year: year ? Number(year) : undefined });
+
+  const data = {};
+  if (name !== undefined) {
+    if (typeof name !== 'string' || !name.trim()) return badRequest(res, 'Batch name cannot be empty');
+    data.name = name.trim();
+  }
+  if (year !== undefined) {
+    const y = Number(year);
+    if (!Number.isFinite(y) || y < 2000) return badRequest(res, 'Year must be 2000 or later');
+    data.year = y;
+  }
+  if (Object.keys(data).length === 0) return badRequest(res, 'No fields to update');
+
+  const updated = await batchModel.update(req.params.id, data);
   logAudit(req, 'UPDATE', 'Batch', updated.id, `Updated batch "${updated.name}"`);
   return ok(res, updated);
 }
