@@ -59,11 +59,11 @@ export default function BatchTestEntry() {
   }, [students, studentsLoaded]);
 
   function setMark(studentId: string, val: string) {
-    setEntries(prev => prev.map(e => e.studentId === studentId ? { ...e, marks: val === '' ? '' : Number(val) } : e));
+    setEntries(prev => prev.map(e => e.studentId === studentId ? { ...e, marks: val } : e));
   }
 
   function fillAll(val: string) {
-    setEntries(prev => prev.map(e => ({ ...e, marks: val === '' ? '' : Number(val) })));
+    setEntries(prev => prev.map(e => ({ ...e, marks: val })));
   }
 
   function isFormValid() {
@@ -75,7 +75,7 @@ export default function BatchTestEntry() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const validEntries = entries.filter(e => e.marks !== '' && Number(e.marks) >= 0);
+    const validEntries = entries.filter(e => e.marks.trim() !== '' && isFinite(Number(e.marks)) && Number(e.marks) >= 0);
     if (validEntries.length === 0) { toast.error('Enter at least one mark'); return; }
 
     try {
@@ -180,7 +180,7 @@ export default function BatchTestEntry() {
               {/* Max Marks */}
               <div>
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">Max Marks</label>
-                <input type="number" required min="1" value={maxMarks}
+                <input type="number" step="any" required min="1" value={maxMarks}
                   onChange={e => setMaxMarks(e.target.value)} className={inputCls} placeholder="e.g. 100" />
               </div>
 
@@ -207,7 +207,7 @@ export default function BatchTestEntry() {
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{entries.length} Students</p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400 dark:text-gray-500">Fill all:</span>
-                  <input type="number" min="0" max={Number(maxMarks)} placeholder="marks"
+                  <input type="number" step="any" min="0" max={Number(maxMarks)} placeholder="marks"
                     onChange={e => fillAll(e.target.value)}
                     className="w-20 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                 </div>
@@ -230,7 +230,7 @@ export default function BatchTestEntry() {
                           <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-100">{s?.fullName}</td>
                           <td className="px-4 py-2.5 text-right">
                             <input
-                              type="number" min="0" max={Number(maxMarks)}
+                              type="number" step="any" min="0" max={Number(maxMarks)}
                               value={e.marks}
                               onChange={ev => setMark(e.studentId, ev.target.value)}
                               placeholder="—"

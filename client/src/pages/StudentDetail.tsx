@@ -944,11 +944,11 @@ export default function StudentDetail() {
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">Marks</label>
-                  <input type="number" required value={wForm.marks} onChange={(e) => setWForm({ ...wForm, marks: e.target.value })} className={inputCls} />
+                  <input type="number" step="any" required value={wForm.marks} onChange={(e) => setWForm({ ...wForm, marks: e.target.value })} className={inputCls} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">Max Marks</label>
-                  <input type="number" required value={wForm.maxMarks} onChange={(e) => setWForm({ ...wForm, maxMarks: e.target.value })} className={inputCls} />
+                  <input type="number" step="any" required value={wForm.maxMarks} onChange={(e) => setWForm({ ...wForm, maxMarks: e.target.value })} className={inputCls} />
                 </div>
                 {wForm.weekDate && isApprovedMonth(new Date(wForm.weekDate).getMonth() + 1, new Date(wForm.weekDate).getFullYear()) && isTeacher && (
                   <div className="col-span-full text-xs text-red-700 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-900/20 px-3 py-2.5 rounded-xl flex items-center gap-1.5 border border-red-150 dark:border-red-900/40">
@@ -1004,11 +1004,11 @@ export default function StudentDetail() {
                                       <div className="grid grid-cols-2 gap-3">
                                         <div>
                                           <label className="block text-xs text-gray-400 mb-1">Marks</label>
-                                          <input type="number" value={editWForm.marks} onChange={e => setEditWForm({ ...editWForm, marks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                          <input type="number" step="any" value={editWForm.marks} onChange={e => setEditWForm({ ...editWForm, marks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                         </div>
                                         <div>
                                           <label className="block text-xs text-gray-400 mb-1">Max Marks</label>
-                                          <input type="number" value={editWForm.maxMarks} onChange={e => setEditWForm({ ...editWForm, maxMarks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                          <input type="number" step="any" value={editWForm.maxMarks} onChange={e => setEditWForm({ ...editWForm, maxMarks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                         </div>
                                       </div>
                                       <div className="flex gap-2 justify-end pt-1">
@@ -1072,9 +1072,9 @@ export default function StudentDetail() {
                                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
                                         {isEditing ? (
                                           <div className="flex items-center gap-1">
-                                            <input type="number" value={editWForm.marks} onChange={e => setEditWForm({ ...editWForm, marks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                            <input type="number" step="any" value={editWForm.marks} onChange={e => setEditWForm({ ...editWForm, marks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                             <span>/</span>
-                                            <input type="number" value={editWForm.maxMarks} onChange={e => setEditWForm({ ...editWForm, maxMarks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                            <input type="number" step="any" value={editWForm.maxMarks} onChange={e => setEditWForm({ ...editWForm, maxMarks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                           </div>
                                         ) : `${t.marks}/${t.maxMarks}`}
                                       </td>
@@ -1134,11 +1134,11 @@ export default function StudentDetail() {
                                       <div className="grid grid-cols-2 gap-3">
                                         <div>
                                           <label className="block text-xs text-gray-400 mb-1">Marks</label>
-                                          <input type="number" value={editWForm.marks} onChange={e => setEditWForm({ ...editWForm, marks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                          <input type="number" step="any" value={editWForm.marks} onChange={e => setEditWForm({ ...editWForm, marks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                         </div>
                                         <div>
                                           <label className="block text-xs text-gray-400 mb-1">Max Marks</label>
-                                          <input type="number" value={editWForm.maxMarks} onChange={e => setEditWForm({ ...editWForm, maxMarks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                          <input type="number" step="any" value={editWForm.maxMarks} onChange={e => setEditWForm({ ...editWForm, maxMarks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                         </div>
                                       </div>
                                       <div className="flex gap-2 justify-end pt-1">
@@ -1202,9 +1202,9 @@ export default function StudentDetail() {
                                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
                                         {isEditing ? (
                                           <div className="flex items-center gap-1">
-                                            <input type="number" value={editWForm.marks} onChange={e => setEditWForm({ ...editWForm, marks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                            <input type="number" step="any" value={editWForm.marks} onChange={e => setEditWForm({ ...editWForm, marks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                             <span>/</span>
-                                            <input type="number" value={editWForm.maxMarks} onChange={e => setEditWForm({ ...editWForm, maxMarks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                            <input type="number" step="any" value={editWForm.maxMarks} onChange={e => setEditWForm({ ...editWForm, maxMarks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                           </div>
                                         ) : `${t.marks}/${t.maxMarks}`}
                                       </td>
@@ -1306,11 +1306,11 @@ export default function StudentDetail() {
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">Marks</label>
-                  <input type="number" required value={mForm.marks} onChange={(e) => setMForm({ ...mForm, marks: e.target.value })} className={inputCls} />
+                  <input type="number" step="any" required value={mForm.marks} onChange={(e) => setMForm({ ...mForm, marks: e.target.value })} className={inputCls} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">Max Marks</label>
-                  <input type="number" required value={mForm.maxMarks} onChange={(e) => setMForm({ ...mForm, maxMarks: e.target.value })} className={inputCls} />
+                  <input type="number" step="any" required value={mForm.maxMarks} onChange={(e) => setMForm({ ...mForm, maxMarks: e.target.value })} className={inputCls} />
                 </div>
                 {mForm.month && mForm.year && isApprovedMonth(Number(mForm.month), Number(mForm.year)) && isTeacher && (
                   <div className="col-span-full text-xs text-red-700 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-900/20 px-3 py-2.5 rounded-xl flex items-center gap-1.5 border border-red-150 dark:border-red-900/40">
@@ -1362,11 +1362,11 @@ export default function StudentDetail() {
                                       <div className="grid grid-cols-2 gap-3">
                                         <div>
                                           <label className="block text-xs text-gray-400 mb-1">Marks</label>
-                                          <input type="number" value={editMForm.marks} onChange={e => setEditMForm({ ...editMForm, marks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                          <input type="number" step="any" value={editMForm.marks} onChange={e => setEditMForm({ ...editMForm, marks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                         </div>
                                         <div>
                                           <label className="block text-xs text-gray-400 mb-1">Max Marks</label>
-                                          <input type="number" value={editMForm.maxMarks} onChange={e => setEditMForm({ ...editMForm, maxMarks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                          <input type="number" step="any" value={editMForm.maxMarks} onChange={e => setEditMForm({ ...editMForm, maxMarks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                         </div>
                                       </div>
                                       <div className="flex gap-2 justify-end pt-1">
@@ -1424,9 +1424,9 @@ export default function StudentDetail() {
                                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
                                         {isEditing ? (
                                           <div className="flex items-center gap-1">
-                                            <input type="number" value={editMForm.marks} onChange={e => setEditMForm({ ...editMForm, marks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                            <input type="number" step="any" value={editMForm.marks} onChange={e => setEditMForm({ ...editMForm, marks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                             <span>/</span>
-                                            <input type="number" value={editMForm.maxMarks} onChange={e => setEditMForm({ ...editMForm, maxMarks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                            <input type="number" step="any" value={editMForm.maxMarks} onChange={e => setEditMForm({ ...editMForm, maxMarks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                           </div>
                                         ) : `${t.marks}/${t.maxMarks}`}
                                       </td>
@@ -1482,11 +1482,11 @@ export default function StudentDetail() {
                                       <div className="grid grid-cols-2 gap-3">
                                         <div>
                                           <label className="block text-xs text-gray-400 mb-1">Marks</label>
-                                          <input type="number" value={editMForm.marks} onChange={e => setEditMForm({ ...editMForm, marks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                          <input type="number" step="any" value={editMForm.marks} onChange={e => setEditMForm({ ...editMForm, marks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                         </div>
                                         <div>
                                           <label className="block text-xs text-gray-400 mb-1">Max Marks</label>
-                                          <input type="number" value={editMForm.maxMarks} onChange={e => setEditMForm({ ...editMForm, maxMarks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                          <input type="number" step="any" value={editMForm.maxMarks} onChange={e => setEditMForm({ ...editMForm, maxMarks: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                         </div>
                                       </div>
                                       <div className="flex gap-2 justify-end pt-1">
@@ -1544,9 +1544,9 @@ export default function StudentDetail() {
                                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
                                         {isEditing ? (
                                           <div className="flex items-center gap-1">
-                                            <input type="number" value={editMForm.marks} onChange={e => setEditMForm({ ...editMForm, marks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                            <input type="number" step="any" value={editMForm.marks} onChange={e => setEditMForm({ ...editMForm, marks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                             <span>/</span>
-                                            <input type="number" value={editMForm.maxMarks} onChange={e => setEditMForm({ ...editMForm, maxMarks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                                            <input type="number" step="any" value={editMForm.maxMarks} onChange={e => setEditMForm({ ...editMForm, maxMarks: e.target.value })} className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 rounded w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                                           </div>
                                         ) : `${t.marks}/${t.maxMarks}`}
                                       </td>

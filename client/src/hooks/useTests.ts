@@ -15,7 +15,9 @@ export interface MonthlyTest {
   createdAt: string;
 }
 
-export interface BulkEntry { studentId: string; marks: number | '' }
+// marks is kept as a raw string while editing so decimal points (e.g. "7.5")
+// aren't stripped mid-typing; it's converted to a number on submit.
+export interface BulkEntry { studentId: string; marks: string }
 
 export interface BulkTestPayload {
   isWeekly: boolean;
