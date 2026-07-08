@@ -51,7 +51,9 @@ async function listTeachers(req, res) {
 }
 
 async function createTeacher(req, res) {
-  const { email, password, name, batchIds = [] } = req.body;
+  const email = (req.body.email || '').trim();
+  const name  = (req.body.name  || '').trim();
+  const { password, batchIds = [] } = req.body;
   if (!email || !password || !name) return badRequest(res, 'Username/Email, password, and name required');
   if (password.length < 8) return badRequest(res, 'Password must be at least 8 characters');
   const exists = await userModel.findByEmail(email);

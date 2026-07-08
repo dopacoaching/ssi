@@ -27,10 +27,9 @@ async function getOne(req, res) {
 }
 
 async function create(req, res) {
-  const { 
-    fullName, regNumber, batchId,
-    password
-  } = req.body;
+  const fullName  = (req.body.fullName  || '').trim();
+  const regNumber = (req.body.regNumber || '').trim();
+  const { batchId, password } = req.body;
   if (!fullName || !regNumber || !batchId) return badRequest(res, 'Missing required fields');
   if (req.user.role === 'TEACHER' && !req.user.batchIds.includes(batchId)) {
     return forbidden(res);
@@ -72,8 +71,8 @@ async function update(req, res) {
   } = req.body;
   
   const updateData = {};
-  if (fullName       !== undefined) updateData.fullName       = fullName;
-  if (regNumber      !== undefined) updateData.regNumber      = regNumber;
+  if (fullName       !== undefined) updateData.fullName       = String(fullName).trim();
+  if (regNumber      !== undefined) updateData.regNumber      = String(regNumber).trim();
   
   if (password) {
     updateData.password = await bcrypt.hash(password, 12);

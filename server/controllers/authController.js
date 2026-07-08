@@ -31,7 +31,11 @@ function signTokens(u) {
 }
 
 async function login(req, res) {
-  const { email, regNumber, password } = req.body;
+  // Trim surrounding whitespace so a stray space in the email/reg number
+  // doesn't cause a false "account not found".
+  const email     = (req.body.email     || '').trim();
+  const regNumber = (req.body.regNumber || '').trim();
+  const { password } = req.body;
   if ((!email && !regNumber) || !password) return badRequest(res, 'Credentials and password required');
 
   let account = null;
