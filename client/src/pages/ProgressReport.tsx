@@ -9,13 +9,14 @@ const loadExportUtils = () => import('../utils/exportUtils');
 
 const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// Language 2 is intentionally left out of this report (Progress Report only —
+// it still appears in every other view/export) per explicit request.
 const SUBJECTS: { label: string; mk: keyof CERecord; mx: keyof CERecord }[] = [
   { label: 'Physics',          mk: 'physicsMarks',         mx: 'physicsMax' },
   { label: 'Chemistry',        mk: 'chemMarks',            mx: 'chemMax' },
   { label: 'Math',             mk: 'mathMarks',            mx: 'mathMax' },
   { label: 'Biology',          mk: 'bioMarks',             mx: 'bioMax' },
   { label: 'Language 1',       mk: 'lang1Marks',           mx: 'lang1Max' },
-  { label: 'Language 2',       mk: 'lang2Marks',           mx: 'lang2Max' },
   { label: 'Psychology',       mk: 'psychologyMarks',      mx: 'psychologyMax' },
   { label: 'Computer Science', mk: 'computerScienceMarks', mx: 'computerScienceMax' },
 ];

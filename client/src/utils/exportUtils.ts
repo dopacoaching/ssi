@@ -1031,13 +1031,14 @@ export function exportReportCardPDF({ student, ceRecords, remarks = [] }: Report
 // test's marks into the CE MCQ score regardless of subject text.
 const isMCQRow = (t: { testType: string }) => t.testType === 'MCQ';
 
+// Language 2 is intentionally left out of this report (Progress Report only —
+// it still appears in every other view/export) per explicit request.
 const PROGRESS_SUBJECTS: { label: string; mk: keyof CERow; mx: keyof CERow }[] = [
   { label: 'Physics',          mk: 'physicsMarks',          mx: 'physicsMax' },
   { label: 'Chemistry',        mk: 'chemMarks',             mx: 'chemMax' },
   { label: 'Math',             mk: 'mathMarks',             mx: 'mathMax' },
   { label: 'Biology',          mk: 'bioMarks',              mx: 'bioMax' },
   { label: 'Language 1',       mk: 'lang1Marks',            mx: 'lang1Max' },
-  { label: 'Language 2',       mk: 'lang2Marks',            mx: 'lang2Max' },
   { label: 'Psychology',       mk: 'psychologyMarks',       mx: 'psychologyMax' },
   { label: 'Computer Science', mk: 'computerScienceMarks',  mx: 'computerScienceMax' },
 ];
