@@ -1,7 +1,7 @@
 const testModel = require("../models/testModel");
 const studentModel = require("../models/studentModel");
 const ceModel = require("../models/ceModel");
-const prisma = require("../utils/prisma");
+const { WeeklyTest, MonthlyTest, BatchApproval, Student } = require("../models/schemas");
 const { computeCE } = require("../utils/ceScoring");
 const {
   ok,
@@ -18,26 +18,20 @@ async function isLocked(studentId, month, year, userRole) {
   if (userRole !== "TEACHER") return false;
   const student = await studentModel.findById(studentId);
   if (!student) return false;
-  const approval = await prisma.batchApproval.findFirst({
-    where: { batchId: student.batchId, month, year }
-  });
+  const approval = await BatchApproval.findOne({ batchId: student.batchId, month, year }).lean();
   return !!approval;
 }
 
 async function syncCEForMonth(studentId, month, year) {
   const [weeklyInMonth, monthlyInMonth] = await Promise.all([
-    prisma.weeklyTest.findMany({
-      where: {
-        studentId,
-        weekDate: {
-          gte: new Date(year, month - 1, 1),
-          lt:  new Date(year, month,     1),
-        },
+    WeeklyTest.find({
+      studentId,
+      weekDate: {
+        $gte: new Date(year, month - 1, 1),
+        $lt:  new Date(year, month,     1),
       },
-    }),
-    prisma.monthlyTest.findMany({
-      where: { studentId, month, year },
-    }),
+    }).lean(),
+    MonthlyTest.find({ studentId, month, year }).lean(),
   ]);
 
   const allTests = [...weeklyInMonth, ...monthlyInMonth];
@@ -351,11 +345,10 @@ async function bulkAdd(req, res) {
 
   // Verify every studentId in entries belongs to this batch (critical auth check)
   const entryStudentIds = entries.filter(e => e.marks != null).map(e => e.studentId);
-  const batchStudents = await prisma.student.findMany({
-    where: { id: { in: entryStudentIds }, batchId, isActive: true },
-    select: { id: true },
-  });
-  const validStudentIds = new Set(batchStudents.map(s => s.id));
+  const batchStudents = await Student.find({
+    _id: { $in: entryStudentIds }, batchId, isActive: true,
+  }).select('_id').lean();
+  const validStudentIds = new Set(batchStudents.map(s => String(s._id)));
 
   let createdCount = 0,
     skippedCount = 0;
@@ -373,9 +366,9 @@ async function bulkAdd(req, res) {
 
     // Check batch lock once (all entries share the same batchId)
     if (req.user.role === "TEACHER") {
-      const approval = await prisma.batchApproval.findFirst({
-        where: { batchId, month: targetMonth, year: targetYear },
-      });
+      const approval = await BatchApproval.findOne({
+        batchId, month: targetMonth, year: targetYear,
+      }).lean();
       if (approval) {
         return forbidden(res, "This month has been approved by admin and is locked");
       }
@@ -383,16 +376,13 @@ async function bulkAdd(req, res) {
 
     // Batch-fetch existing duplicates for all students in one query
     const studentIds = entries.filter(e => e.marks != null).map(e => e.studentId);
-    const existingWeekly = await prisma.weeklyTest.findMany({
-      where: {
-        studentId: { in: studentIds },
-        subject,
-        testType: testType || "Theory",
-        weekDate: d,
-      },
-      select: { studentId: true },
-    });
-    const duplicateSet = new Set(existingWeekly.map(t => t.studentId));
+    const existingWeekly = await WeeklyTest.find({
+      studentId: { $in: studentIds },
+      subject,
+      testType: testType || "Theory",
+      weekDate: d,
+    }).select('studentId').lean();
+    const duplicateSet = new Set(existingWeekly.map(t => String(t.studentId)));
 
     for (const entry of entries) {
       if (entry.marks == null) continue;
@@ -428,9 +418,9 @@ async function bulkAdd(req, res) {
 
     // Check batch lock once
     if (req.user.role === "TEACHER") {
-      const approval = await prisma.batchApproval.findFirst({
-        where: { batchId, month: m, year: y },
-      });
+      const approval = await BatchApproval.findOne({
+        batchId, month: m, year: y,
+      }).lean();
       if (approval) {
         return forbidden(res, "This month has been approved by admin and is locked");
       }
@@ -438,17 +428,14 @@ async function bulkAdd(req, res) {
 
     // Batch-fetch existing duplicates for all students in one query
     const studentIds = entries.filter(e => e.marks != null).map(e => e.studentId);
-    const existingMonthly = await prisma.monthlyTest.findMany({
-      where: {
-        studentId: { in: studentIds },
-        subject,
-        testType: testType || "Theory",
-        month: m,
-        year: y,
-      },
-      select: { studentId: true },
-    });
-    const duplicateSet = new Set(existingMonthly.map(t => t.studentId));
+    const existingMonthly = await MonthlyTest.find({
+      studentId: { $in: studentIds },
+      subject,
+      testType: testType || "Theory",
+      month: m,
+      year: y,
+    }).select('studentId').lean();
+    const duplicateSet = new Set(existingMonthly.map(t => String(t.studentId)));
 
     for (const entry of entries) {
       if (entry.marks == null) continue;

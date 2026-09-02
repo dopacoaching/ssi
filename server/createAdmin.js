@@ -1,9 +1,11 @@
 require('dotenv').config();
-const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
-const prisma = new PrismaClient();
+const { connectDB, mongoose } = require('./utils/db');
+const { User } = require('./models/schemas');
 
 async function main() {
+  await connectDB();
+
   const credentialsRaw = process.env.ADMIN_CREDENTIALS || '';
   const adminList = credentialsRaw.split(',').map(pair => {
     const [email, password] = pair.split(':').map(s => s.trim());
@@ -16,20 +18,18 @@ async function main() {
   }
 
   for (const { email, password } of adminList) {
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await User.findOne({ email });
     if (existing) {
       console.log('Admin already exists: ' + email);
       continue;
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const admin = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name: 'Super Admin',
-        role: 'ADMIN',
-      },
+    const admin = await User.create({
+      email,
+      password: hashedPassword,
+      name: 'Super Admin',
+      role: 'ADMIN',
     });
 
     console.log('Admin created:', admin.email);
@@ -38,4 +38,4 @@ async function main() {
 
 main()
   .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .finally(() => mongoose.disconnect());

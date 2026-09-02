@@ -1,55 +1,56 @@
-const prisma = require('../utils/prisma');
+const { WeeklyTest, MonthlyTest, normalize } = require('./schemas');
 
+// ── Weekly ──────────────────────────────────────────────────────────────────
 const findWeeklyByStudent = (studentId) =>
-  prisma.weeklyTest.findMany({
-    where: { studentId },
-    orderBy: { weekDate: 'desc' },
-  });
+  WeeklyTest.find({ studentId }).sort({ weekDate: -1 }).lean().then(normalize);
 
 const findWeeklyByStudentAndMonth = (studentId, month, year) =>
-  prisma.weeklyTest.findMany({
-    where: {
-      studentId,
-      weekDate: { gte: new Date(year, month - 1, 1), lt: new Date(year, month, 1) },
-    },
-    orderBy: { weekDate: 'desc' },
-  });
+  WeeklyTest.find({
+    studentId,
+    weekDate: { $gte: new Date(year, month - 1, 1), $lt: new Date(year, month, 1) },
+  }).sort({ weekDate: -1 }).lean().then(normalize);
 
-const createWeekly = (data) => prisma.weeklyTest.create({ data });
+const createWeekly = (data) =>
+  WeeklyTest.create(data).then((doc) => normalize(doc.toObject()));
 
-const findWeeklyById = (id) => prisma.weeklyTest.findUnique({ where: { id } });
+const findWeeklyById = (id) =>
+  WeeklyTest.findById(id).lean().then(normalize);
 
-const updateWeekly = (id, data) => prisma.weeklyTest.update({ where: { id }, data });
+const updateWeekly = (id, data) =>
+  WeeklyTest.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize);
 
-const deleteWeekly = (id) => prisma.weeklyTest.delete({ where: { id } });
+const deleteWeekly = (id) =>
+  WeeklyTest.findByIdAndDelete(id).lean().then(normalize);
 
 const findWeeklyDuplicate = (studentId, subject, testType, weekDate) =>
-  prisma.weeklyTest.findFirst({ where: { studentId, subject, testType, weekDate: new Date(weekDate) } });
+  WeeklyTest.findOne({ studentId, subject, testType, weekDate: new Date(weekDate) })
+    .lean().then(normalize);
 
+// ── Monthly ─────────────────────────────────────────────────────────────────
 const findMonthlyByStudent = (studentId) =>
-  prisma.monthlyTest.findMany({
-    where: { studentId },
-    orderBy: [{ year: 'desc' }, { month: 'desc' }],
-  });
+  MonthlyTest.find({ studentId }).sort({ year: -1, month: -1 }).lean().then(normalize);
 
 const findMonthlyByStudentAndMonth = (studentId, month, year) =>
-  prisma.monthlyTest.findMany({
-    where: { studentId, month, year },
-    orderBy: [{ year: 'desc' }, { month: 'desc' }],
-  });
+  MonthlyTest.find({ studentId, month, year }).sort({ year: -1, month: -1 }).lean().then(normalize);
 
-const createMonthly = (data) => prisma.monthlyTest.create({ data });
+const createMonthly = (data) =>
+  MonthlyTest.create(data).then((doc) => normalize(doc.toObject()));
 
-const findMonthlyById = (id) => prisma.monthlyTest.findUnique({ where: { id } });
+const findMonthlyById = (id) =>
+  MonthlyTest.findById(id).lean().then(normalize);
 
-const updateMonthly = (id, data) => prisma.monthlyTest.update({ where: { id }, data });
+const updateMonthly = (id, data) =>
+  MonthlyTest.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize);
 
-const deleteMonthly = (id) => prisma.monthlyTest.delete({ where: { id } });
+const deleteMonthly = (id) =>
+  MonthlyTest.findByIdAndDelete(id).lean().then(normalize);
 
 const findMonthlyDuplicate = (studentId, subject, testType, month, year) =>
-  prisma.monthlyTest.findFirst({ where: { studentId, subject, testType, month, year } });
+  MonthlyTest.findOne({ studentId, subject, testType, month, year }).lean().then(normalize);
 
 module.exports = {
-  findWeeklyByStudent, findWeeklyByStudentAndMonth, createWeekly, findWeeklyDuplicate, findWeeklyById, updateWeekly, deleteWeekly,
-  findMonthlyByStudent, findMonthlyByStudentAndMonth, createMonthly, findMonthlyDuplicate, findMonthlyById, updateMonthly, deleteMonthly,
+  findWeeklyByStudent, findWeeklyByStudentAndMonth, createWeekly, findWeeklyDuplicate,
+  findWeeklyById, updateWeekly, deleteWeekly,
+  findMonthlyByStudent, findMonthlyByStudentAndMonth, createMonthly, findMonthlyDuplicate,
+  findMonthlyById, updateMonthly, deleteMonthly,
 };

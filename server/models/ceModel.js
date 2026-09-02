@@ -1,20 +1,21 @@
-const prisma = require('../utils/prisma');
+const { CERecord, normalize } = require('./schemas');
 
 const findByStudent = (studentId) =>
-  prisma.cERecord.findMany({
-    where: { studentId },
-    orderBy: [{ year: 'desc' }, { month: 'desc' }],
-  });
+  CERecord.find({ studentId }).sort({ year: -1, month: -1 }).lean().then(normalize);
 
 const findOne = (studentId, month, year) =>
-  prisma.cERecord.findFirst({ where: { studentId, month, year } });
+  CERecord.findOne({ studentId, month, year }).lean().then(normalize);
 
-const create = (data) => prisma.cERecord.create({ data });
+const create = (data) =>
+  CERecord.create(data).then((doc) => normalize(doc.toObject()));
 
-const update = (id, data) => prisma.cERecord.update({ where: { id }, data });
+const update = (id, data) =>
+  CERecord.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize);
 
-const findById = (id) => prisma.cERecord.findUnique({ where: { id } });
+const findById = (id) =>
+  CERecord.findById(id).lean().then(normalize);
 
-const remove = (id) => prisma.cERecord.delete({ where: { id } });
+const remove = (id) =>
+  CERecord.findByIdAndDelete(id).lean().then(normalize);
 
 module.exports = { findByStudent, findOne, create, update, findById, remove };

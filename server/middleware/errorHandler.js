@@ -1,6 +1,6 @@
 const { logError } = require('../utils/audit');
 
-// Prisma P2002 unique constraint — field key → user-facing message
+// Mongo duplicate-key (E11000) — index field(s) → user-facing message
 const UNIQUE_FIELD_MESSAGES = {
   regNumber:          'A student with this registration number already exists',
   email:              'This email address is already registered',
@@ -20,30 +20,23 @@ function classifyError(err) {
     return { status: 400, message: MULTER_CODE_MESSAGES[err.code] || 'File upload error' };
   }
 
-  // Prisma errors — code always starts with 'P'
-  if (typeof err.code === 'string' && err.code.startsWith('P')) {
-    if (err.code === 'P2002') {
-      const target = err.meta?.target ?? '';
-      let field;
-      if (Array.isArray(target)) {
-        // PostgreSQL / MySQL: array of field names
-        field = target.join('_');
-      } else {
-        // MongoDB: index name like "Student_regNumber_key"
-        const m = String(target).match(/^[^_]+_(.+?)_key$/);
-        field = m ? m[1] : String(target);
-      }
-      const message = UNIQUE_FIELD_MESSAGES[field] ?? 'This value is already in use';
-      return { status: 400, message };
-    }
-    if (err.code === 'P2025') {
-      return { status: 404, message: 'Record not found' };
-    }
-    if (err.code === 'P2003') {
-      return { status: 400, message: 'The referenced record does not exist' };
-    }
-    // Catch-all for other Prisma errors
-    return { status: 400, message: 'Database operation failed — please check your input' };
+  // Mongo duplicate-key error
+  if (err.code === 11000 || err.code === 11001) {
+    const keys = Object.keys(err.keyPattern || err.keyValue || {});
+    const field = keys.join('_');
+    const message = UNIQUE_FIELD_MESSAGES[field] ?? 'This value is already in use';
+    return { status: 400, message };
+  }
+
+  // Mongoose schema validation failure
+  if (err.name === 'ValidationError') {
+    const first = Object.values(err.errors || {})[0];
+    return { status: 400, message: first?.message || 'Validation failed — please check your input' };
+  }
+
+  // Malformed ObjectId / uncastable value in a query
+  if (err.name === 'CastError') {
+    return { status: 400, message: 'Invalid identifier' };
   }
 
   return null;
