@@ -264,7 +264,12 @@ export default function ProgressReport() {
                       <thead><tr>
                         <th className={`${thCls} text-left`}>Month</th>
                         {activeSubjects.map(s => (
-                          <th key={s.label} className={thCls}>{s.label} ({latestMaxBySubject[s.label] ?? '—'})</th>
+                          <th key={s.label} className={thCls}>
+                            {/* Math's max varies too widely month to month (unlike the other
+                                subjects, which are consistently out of 30) for a single bracket
+                                total to mean anything, so it's omitted here. */}
+                            {s.label}{s.label !== 'Math' && ` (${latestMaxBySubject[s.label] ?? '—'})`}
+                          </th>
                         ))}
                       </tr></thead>
                       <tbody>
@@ -381,8 +386,8 @@ export default function ProgressReport() {
 
                 {/* 4. Sign-off */}
                 <div className={`${cardCls} p-6`}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
-                    {['Signature of Parent', 'Signature of Teacher', 'Signature of Class Teacher', 'Signature of Principal'].map(label => (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-10">
+                    {['Signature of Class Teacher', 'Signature of Principal', 'Signature of Parent'].map(label => (
                       <div key={label}>
                         <div className="border-b border-gray-400 h-8" />
                         <p className="text-xs text-gray-500 mt-1.5">{label}</p>

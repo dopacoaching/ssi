@@ -1159,7 +1159,10 @@ export function exportProgressReportPDF({ student, ceRecords, weekly, monthly, m
 
   autoTable(doc, {
     startY: afterS1 + 18,
-    head: [['Month', ...activeSubjects.map(s => `${s.label} (${latestMaxBySubject[s.label] ?? '—'})`)]],
+    // Math's max varies too widely month to month (unlike the other subjects,
+    // which are consistently out of 30) for a single bracket total to mean
+    // anything, so it's omitted for Math.
+    head: [['Month', ...activeSubjects.map(s => s.label === 'Math' ? s.label : `${s.label} (${latestMaxBySubject[s.label] ?? '—'})`)]],
     body: theoryRows,
     headStyles:  { fillColor: [79, 70, 229], fontSize: 7.5, fontStyle: 'bold', halign: 'center' },
     bodyStyles:  { fontSize: 8, textColor: [30, 41, 59], halign: 'center' },
@@ -1285,17 +1288,16 @@ export function exportProgressReportPDF({ student, ceRecords, weekly, monthly, m
   let signY = ((doc as any).lastAutoTable?.finalY ?? afterWeekly + 40) + 26;
   if (signY > 275) { doc.addPage(); signY = 60; }
 
-  const signatures = ['Signature of Parent', 'Signature of Teacher', 'Signature of Class Teacher', 'Signature of Principal'];
-  const colX = [14, 110];
-  const rowY = [signY, signY + 28];
+  const signatures = ['Signature of Class Teacher', 'Signature of Principal', 'Signature of Parent'];
+  const colX = [14, 76, 138];
   signatures.forEach((label, i) => {
-    const x = colX[i % 2];
-    const y = rowY[Math.floor(i / 2)];
+    const x = colX[i];
+    const y = signY;
     doc.setDrawColor(100, 116, 139);
     doc.setLineWidth(0.3);
-    doc.line(x, y, x + 82, y);
+    doc.line(x, y, x + 54, y);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setTextColor(71, 85, 105);
     doc.text(label, x, y + 5);
   });
