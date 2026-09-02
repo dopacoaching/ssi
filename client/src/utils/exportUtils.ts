@@ -476,6 +476,18 @@ export function exportBatchExcel(students: BatchReportStudent[], batchName: stri
 
 // ── PDF Styling and Base Layout ──────────────────────────────────────────────
 
+// Stamps the standard footer (attribution + page number) on every page of the doc.
+function addStandardFooter(doc: jsPDF) {
+  const pageCount = (doc as any).internal.pages.length - 1;
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('DOPA Coaching — Academic Performance Division', 14, 290);
+    doc.text(`Page ${i} of ${pageCount}`, 180, 290);
+  }
+}
+
 function basePDF(title: string, studentName: string) {
   const doc = new jsPDF();
 
@@ -1001,16 +1013,230 @@ export function exportReportCardPDF({ student, ceRecords, remarks = [] }: Report
   }
 
   // Footer on every page
-  const pageCount = (doc as any).internal.pages.length - 1;
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text('DOPA Coaching — Academic Performance Division', 14, 290);
-    doc.text(`Page ${i} of ${pageCount}`, 180, 290);
-  }
+  addStandardFooter(doc);
 
   doc.save(`${student.fullName}_report_card.pdf`);
+}
+
+// ── Student Progress Report PDF ─────────────────────────────────────────────
+// Formal, printable progress report: monthly CE breakdown, subject-wise
+// weekly+monthly exam consolidation (out of 90/subject), a side-by-side
+// weekly-vs-grand-exam summary, and a four-line sign-off block.
+
+const PROGRESS_SUBJECTS: { label: string; mk: keyof CERow; mx: keyof CERow }[] = [
+  { label: 'Physics',          mk: 'physicsMarks',          mx: 'physicsMax' },
+  { label: 'Chemistry',        mk: 'chemMarks',             mx: 'chemMax' },
+  { label: 'Math',             mk: 'mathMarks',             mx: 'mathMax' },
+  { label: 'Biology',          mk: 'bioMarks',              mx: 'bioMax' },
+  { label: 'Language 1',       mk: 'lang1Marks',            mx: 'lang1Max' },
+  { label: 'Language 2',       mk: 'lang2Marks',            mx: 'lang2Max' },
+  { label: 'Psychology',       mk: 'psychologyMarks',       mx: 'psychologyMax' },
+  { label: 'Computer Science', mk: 'computerScienceMarks',  mx: 'computerScienceMax' },
+];
+
+export interface ProgressReportData {
+  student: { fullName: string; regNumber: string; batch?: { name: string } };
+  ceRecords: CERow[];
+  weekly: WeeklyRow[];
+  monthly: MonthlyRow[];
+  /** Months to include, chronological order. Defaults to every month with a CE record. */
+  months?: { month: number; year: number }[];
+}
+
+export function exportProgressReportPDF({ student, ceRecords, weekly, monthly, months }: ProgressReportData) {
+  const doc = new jsPDF();
+  const generated = new Date().toLocaleDateString();
+
+  const period = (months && months.length > 0)
+    ? months
+    : [...ceRecords].map(r => ({ month: r.month, year: r.year }))
+        .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+
+  const selectedCE = period
+    .map(p => ceRecords.find(r => r.month === p.month && r.year === p.year))
+    .filter((r): r is CERow => !!r);
+
+  // ── Header ──
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 210, 32, 'F');
+  doc.setFillColor(79, 70, 229);
+  doc.rect(0, 32, 210, 2, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Progress Report', 14, 16);
+
+  try {
+    doc.addImage('/dopa-logo.png', 'PNG', 165, 8, 31, 15);
+  } catch (e) {
+    console.error('Failed to add logo:', e);
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`Generated: ${generated}`, 14, 26);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`Student Name: ${student.fullName}`, 14, 42);
+  doc.setFontSize(10.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Batch: ${student.batch?.name ?? '—'}`, 14, 49);
+
+  if (selectedCE.length === 0) {
+    doc.setFontSize(10);
+    doc.setTextColor(107, 114, 128);
+    doc.text('No completed months available for this report.', 14, 62);
+    doc.save(`${student.fullName}_progress_report.pdf`);
+    return;
+  }
+
+  // ── Section 1: Monthly CE Analysis ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Monthly CE (Continuous Evaluation) Analysis', 14, 60);
+
+  autoTable(doc, {
+    startY: 64,
+    head: [['Month', 'Theory\n(/10)', 'Notebook\n(/2)', 'MCQ\n(/5)', 'Attendance\n(/3)', 'Monthly CE Mark\n(/20)']],
+    body: selectedCE.map(r => [
+      `${MONTHS[r.month]} ${r.year}`,
+      r.theoryScore.toFixed(1),
+      r.notesScore.toFixed(1),
+      r.mcqScore.toFixed(1),
+      r.attendScore.toFixed(1),
+      r.totalCE.toFixed(1),
+    ]),
+    headStyles:  { fillColor: [15, 23, 42], fontSize: 8.5, fontStyle: 'bold', halign: 'center' },
+    bodyStyles:  { fontSize: 8.5, textColor: [30, 41, 59], halign: 'center' },
+    columnStyles: { 0: { halign: 'left' }, 5: { fontStyle: 'bold' } },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    tableLineColor: [226, 232, 240],
+    tableLineWidth: 0.2,
+  });
+
+  // ── Section 2: Subject-wise Performance (weekly + monthly combined, /90) ──
+  const activeSubjects = PROGRESS_SUBJECTS.filter(s => selectedCE.some(r => (r[s.mx] as number) > 0));
+
+  let afterS1 = (doc as any).lastAutoTable?.finalY ?? 90;
+  if (afterS1 > 250) { doc.addPage(); afterS1 = 14; }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Subject-wise Performance (Weekly + Monthly Exams)', 14, afterS1 + 10);
+
+  let totalObtained = 0, totalMax = 0;
+  const s2Rows = selectedCE.map(r => {
+    const cells = activeSubjects.map(s => {
+      const marks = r[s.mk] as number, max = r[s.mx] as number;
+      totalObtained += marks; totalMax += max;
+      return max > 0 ? `${marks}/${max}` : '—';
+    });
+    return [`${MONTHS[r.month]} ${r.year}`, ...cells];
+  });
+  const overallPct = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
+
+  autoTable(doc, {
+    startY: afterS1 + 14,
+    head: [['Month', ...activeSubjects.map(s => s.label)]],
+    body: s2Rows,
+    foot: [[`Total Obtained: ${totalObtained.toFixed(1)}/${totalMax.toFixed(1)}`, ...Array(activeSubjects.length).fill(''), ]],
+    headStyles:  { fillColor: [79, 70, 229], fontSize: 8, fontStyle: 'bold', halign: 'center' },
+    bodyStyles:  { fontSize: 8, textColor: [30, 41, 59], halign: 'center' },
+    footStyles:  { fillColor: [238, 242, 255], textColor: [67, 56, 202], fontStyle: 'bold', fontSize: 8, halign: 'left' },
+    columnStyles: { 0: { halign: 'left' } },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    tableLineColor: [226, 232, 240],
+    tableLineWidth: 0.2,
+  });
+
+  const afterS2 = (doc as any).lastAutoTable?.finalY ?? afterS1 + 40;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  if (overallPct >= 75)      doc.setTextColor(4, 120, 87);
+  else if (overallPct >= 50) doc.setTextColor(180, 83, 9);
+  else                       doc.setTextColor(185, 28, 28);
+  doc.text(`Overall Percentage: ${overallPct.toFixed(1)}%`, 14, afterS2 + 6);
+
+  // ── Section 3: Weekly vs Grand Exam Consolidation ──
+  let afterS2b = afterS2 + 14;
+  if (afterS2b > 250) { doc.addPage(); afterS2b = 14; }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Weekly vs Grand Exam Consolidation', 14, afterS2b);
+
+  const s3Rows = selectedCE.map(r => {
+    const wTests = weekly.filter(t => t.testType === 'Theory' && (() => {
+      const d = new Date(t.weekDate);
+      return d.getMonth() + 1 === r.month && d.getFullYear() === r.year;
+    })());
+    const mTests = monthly.filter(t => t.testType === 'Theory' && t.month === r.month && t.year === r.year);
+    const wMarks = wTests.reduce((a, t) => a + t.marks, 0), wMax = wTests.reduce((a, t) => a + t.maxMarks, 0);
+    const gMarks = mTests.reduce((a, t) => a + t.marks, 0), gMax = mTests.reduce((a, t) => a + t.maxMarks, 0);
+    const tMarks = wMarks + gMarks, tMax = wMax + gMax;
+    const pct = tMax > 0 ? (tMarks / tMax) * 100 : 0;
+    return [
+      `${MONTHS[r.month]} ${r.year}`,
+      wMax > 0 ? `${wMarks}/${wMax}` : '—',
+      gMax > 0 ? `${gMarks}/${gMax}` : '—',
+      tMax > 0 ? `${tMarks}/${tMax}` : '—',
+      tMax > 0 ? `${pct.toFixed(1)}%` : '—',
+    ];
+  });
+
+  autoTable(doc, {
+    startY: afterS2b + 4,
+    head: [['Month', 'Weekly Exam Mark', 'Grand Exam Mark', 'Total Obtained Mark', 'Percentage (%)']],
+    body: s3Rows,
+    headStyles:  { fillColor: [15, 23, 42], fontSize: 8.5, fontStyle: 'bold', halign: 'center' },
+    bodyStyles:  { fontSize: 8.5, textColor: [30, 41, 59], halign: 'center' },
+    columnStyles: { 0: { halign: 'left' }, 3: { fontStyle: 'bold' } },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    tableLineColor: [226, 232, 240],
+    tableLineWidth: 0.2,
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 4) {
+        const val = parseFloat(String(data.cell.text[0]));
+        if (!isNaN(val)) {
+          if (val >= 75)      data.cell.styles.textColor = [4, 120, 87];
+          else if (val >= 50) data.cell.styles.textColor = [180, 83, 9];
+          else                data.cell.styles.textColor = [185, 28, 28];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    },
+  });
+
+  // ── Section 4: Sign-off block ──
+  let signY = ((doc as any).lastAutoTable?.finalY ?? afterS2b + 40) + 26;
+  if (signY > 275) { doc.addPage(); signY = 60; }
+
+  const signatures = ['Signature of Parent', 'Signature of Teacher', 'Signature of Class Teacher', 'Signature of Principal'];
+  const colX = [14, 110];
+  const rowY = [signY, signY + 28];
+  signatures.forEach((label, i) => {
+    const x = colX[i % 2];
+    const y = rowY[Math.floor(i / 2)];
+    doc.setDrawColor(100, 116, 139);
+    doc.setLineWidth(0.3);
+    doc.line(x, y, x + 82, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(label, x, y + 5);
+  });
+
+  // Footer on every page
+  addStandardFooter(doc);
+
+  doc.save(`${student.fullName}_progress_report.pdf`);
 }
 
 // ── Batch All-Marks PDF ───────────────────────────────────────────────────────
@@ -1218,14 +1444,7 @@ export function exportBatchPDF(students: BatchReportStudent[], batchName: string
   });
 
   // Footer
-  const pageCount = (doc as any).internal.pages.length - 1;
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text('DOPA Coaching — Academic Performance Division', 14, 290);
-    doc.text(`Page ${i} of ${pageCount}`, 180, 290);
-  }
+  addStandardFooter(doc);
 
   doc.save(`${batchName}_all_marks.pdf`);
 }

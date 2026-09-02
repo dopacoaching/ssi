@@ -13,6 +13,7 @@ const StudentDetail = lazy(() => import('../pages/StudentDetail'));
 const Batches       = lazy(() => import('../pages/admin/Batches'));
 const Teachers      = lazy(() => import('../pages/admin/Teachers'));
 const BatchTestEntry  = lazy(() => import('../pages/BatchTestEntry'));
+const ProgressReport   = lazy(() => import('../pages/ProgressReport'));
 const BatchAnalytics  = lazy(() => import('../pages/admin/BatchAnalytics'));
 const AuditLog        = lazy(() => import('../pages/admin/AuditLog'));
 
@@ -36,6 +37,10 @@ const router = createBrowserRouter([
   {
     path: '/students/:id',
     element: <ProtectedRoute><StudentDetail /></ProtectedRoute>,
+  },
+  {
+    path: '/students/:id/progress-report',
+    element: <ProtectedRoute role={['ADMIN', 'TEACHER']}><ProgressReport /></ProtectedRoute>,
   },
   {
     path: '/admin/batches',

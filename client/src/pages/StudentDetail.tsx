@@ -499,14 +499,21 @@ export default function StudentDetail() {
         {/* Progress Report Tab */}
         {tab === 'report' && (
           <div className="space-y-6">
-            {/* Report card download (ADMIN only) */}
-            {user?.role === 'ADMIN' && student && records.length > 0 && (
-              <div className="flex justify-end">
+            {/* Report card download (ADMIN only) + full Progress Report module (ADMIN & TEACHER) */}
+            {isStaff && student && (
+              <div className="flex justify-end gap-2 flex-wrap">
                 <button
-                  onClick={async () => { const { exportReportCardPDF } = await loadExportUtils(); exportReportCardPDF({ student: student as any, ceRecords: records, remarks }); }}
-                  className="text-sm px-4 py-2 border border-indigo-300 dark:border-indigo-600 rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 font-medium flex items-center gap-1.5">
-                  ↓ Download Report Card
+                  onClick={() => navigate(`/students/${id}/progress-report`)}
+                  className="text-sm px-4 py-2 bg-indigo-600 rounded-xl text-white hover:bg-indigo-700 font-medium flex items-center gap-1.5">
+                  📋 Generate Progress Report
                 </button>
+                {user?.role === 'ADMIN' && records.length > 0 && (
+                  <button
+                    onClick={async () => { const { exportReportCardPDF } = await loadExportUtils(); exportReportCardPDF({ student: student as any, ceRecords: records, remarks }); }}
+                    className="text-sm px-4 py-2 border border-indigo-300 dark:border-indigo-600 rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 font-medium flex items-center gap-1.5">
+                    ↓ Download Report Card
+                  </button>
+                )}
               </div>
             )}
             {/* Quick Stats */}
