@@ -2,9 +2,13 @@ const mongoose = require('mongoose');
 
 mongoose.set('strictQuery', true);
 
-// Indexes were already created by the previous Prisma layer; don't let Mongoose
-// try to re-create them (compound index names differ and would conflict).
-mongoose.set('autoIndex', false);
+// Production already carries the indexes the retired Prisma layer created, and
+// re-creating them there can conflict on differing index names — so let Mongoose
+// build schema indexes everywhere EXCEPT production. This keeps `unique`
+// constraints real on fresh databases (local dev, staging, tests, DR restores)
+// instead of silently doing nothing. Production index changes go through a
+// migration.
+mongoose.set('autoIndex', process.env.NODE_ENV !== 'production');
 
 const uri = process.env.DATABASE_URL;
 
@@ -21,7 +25,13 @@ async function connectDB() {
     cached.promise = mongoose.connect(uri, {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 10000,
-    }).then((m) => m.connection);
+    }).then((m) => m.connection).catch((err) => {
+      // Don't cache a rejected promise — otherwise one transient failure
+      // (Atlas failover, network blip) permanently poisons a warm serverless
+      // instance: every later request re-awaits the same stale rejection.
+      cached.promise = null;
+      throw err;
+    });
   }
   cached.conn = await cached.promise;
   return cached.conn;

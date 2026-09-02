@@ -67,12 +67,20 @@ const batchWorkingDaysSchema = new Schema({
   year:        { type: Number, required: true },
   workingDays: { type: Number, required: true },
 }, { ...timestamps, collection: 'BatchWorkingDays' });
+// One working-days row per batch/period — matches the Prisma @@unique.
+batchWorkingDaysSchema.index(
+  { batchId: 1, month: 1, year: 1 }, { unique: true, name: 'batchId_month_year' },
+);
 
 const batchApprovalSchema = new Schema({
   batchId: { type: ObjectId, ref: 'Batch', required: true },
   month:   { type: Number, required: true },
   year:    { type: Number, required: true },
 }, { ...timestamps, collection: 'BatchApproval' });
+// One approval row per batch/period — matches the Prisma @@unique.
+batchApprovalSchema.index(
+  { batchId: 1, month: 1, year: 1 }, { unique: true, name: 'batchId_month_year' },
+);
 
 const studentSchema = new Schema({
   fullName:  { type: String, required: true },

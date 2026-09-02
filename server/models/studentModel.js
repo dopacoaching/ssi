@@ -1,4 +1,5 @@
 const { Student, Batch, CERecord, WeeklyTest, MonthlyTest, normalize, containsInsensitive } = require('./schemas');
+const { orNotFound } = require('../utils/errors');
 
 // All selects explicitly omit the password field (parity with the old layer).
 const BASE_FIELDS = 'fullName regNumber batchId isActive photo createdAt updatedAt';
@@ -81,10 +82,13 @@ const findByBatch = async (batchId) => {
   return normalize(students);
 };
 
-const findById = async (id) => {
+// `withBatch` stitches in the student's `{ batch: { id, name } }` (an extra
+// Batch round-trip). Only the detail view (getOne) renders it; the hot auth /
+// test / CE / remark guards use scalar fields only, so they leave it off.
+const findById = async (id, { withBatch = false } = {}) => {
   const student = await Student.findOne({ _id: id }).select(BASE_FIELDS).lean();
   if (!student) return null;
-  await attachBatch([student]);
+  if (withBatch) await attachBatch([student]);
   return normalize(student);
 };
 
@@ -114,12 +118,12 @@ const create = (data) =>
 const update = async (id, data) => {
   const doc = await Student.findByIdAndUpdate(id, data, { new: true })
     .select(BASE_FIELDS).lean();
-  return normalize(doc);
+  return orNotFound('Student')(normalize(doc));
 };
 
 const softDelete = (id) =>
   Student.findByIdAndUpdate(id, { isActive: false }, { new: true })
-    .select('_id').lean().then(normalize);
+    .select('_id').lean().then(normalize).then(orNotFound('Student'));
 
 const findBatchReport = async (batchId) => {
   const students = await Student.find({ batchId, isActive: true })

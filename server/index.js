@@ -9,6 +9,11 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+// Vercel (and most PaaS) put the app behind exactly one proxy. Without this,
+// `req.ip` is the proxy's address for every request, so express-rate-limit
+// buckets all clients together — one shared login/refresh quota for everyone.
+app.set('trust proxy', 1);
+
 const allowedOrigin = process.env.CLIENT_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : null);
 if (!allowedOrigin) {
   console.error('[startup] CLIENT_URL environment variable is not set — cannot start in production');

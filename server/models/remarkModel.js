@@ -1,4 +1,5 @@
 const { Remark, normalize } = require('./schemas');
+const { orNotFound } = require('../utils/errors');
 
 // Prisma returned the related teacher under `remark.teacher` as { id, name }.
 // Mongoose `populate` would overwrite `teacherId` itself, so we populate a copy
@@ -31,6 +32,7 @@ const update = (id, data) =>
   Remark.findByIdAndUpdate(id, data, { new: true })
     .populate({ path: 'teacherId', select: 'name' })
     .lean()
-    .then(shape);
+    .then(shape)
+    .then(orNotFound('Remark'));
 
 module.exports = { findByStudent, findById, create, update };

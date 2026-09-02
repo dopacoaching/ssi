@@ -1,4 +1,5 @@
 const { Batch, Student, normalize } = require('./schemas');
+const { orNotFound } = require('../utils/errors');
 
 // Active-student counts keyed by batch id, for the `_count.students` shape the
 // Prisma layer returned.
@@ -28,6 +29,6 @@ const create = (data) =>
   Batch.create(data).then((doc) => normalize(doc.toObject()));
 
 const update = (id, data) =>
-  Batch.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize);
+  Batch.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize).then(orNotFound('Batch'));
 
 module.exports = { findAll, findById, create, update };

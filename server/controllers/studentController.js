@@ -13,7 +13,7 @@ async function listByBatch(req, res) {
 }
 
 async function getOne(req, res) {
-  const student = await studentModel.findById(req.params.id);
+  const student = await studentModel.findById(req.params.id, { withBatch: true });
   if (!student || !student.isActive) return notFound(res, 'Student not found');
   
   if (req.user.role === 'STUDENT' && req.user.id !== student.id) {

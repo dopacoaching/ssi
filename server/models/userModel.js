@@ -1,4 +1,5 @@
 const { User, normalize } = require('./schemas');
+const { orNotFound } = require('../utils/errors');
 
 const findByEmail = (email) =>
   User.findOne({ email }).lean().then(normalize);
@@ -16,6 +17,6 @@ const findAll = () =>
     .then(normalize);
 
 const update = (id, data) =>
-  User.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize);
+  User.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize).then(orNotFound('User'));
 
 module.exports = { findByEmail, findById, create, findAll, update };

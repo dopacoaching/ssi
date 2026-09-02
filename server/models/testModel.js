@@ -1,4 +1,5 @@
 const { WeeklyTest, MonthlyTest, normalize } = require('./schemas');
+const { orNotFound } = require('../utils/errors');
 
 // ── Weekly ──────────────────────────────────────────────────────────────────
 const findWeeklyByStudent = (studentId) =>
@@ -17,10 +18,10 @@ const findWeeklyById = (id) =>
   WeeklyTest.findById(id).lean().then(normalize);
 
 const updateWeekly = (id, data) =>
-  WeeklyTest.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize);
+  WeeklyTest.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize).then(orNotFound('Weekly test'));
 
 const deleteWeekly = (id) =>
-  WeeklyTest.findByIdAndDelete(id).lean().then(normalize);
+  WeeklyTest.findByIdAndDelete(id).lean().then(normalize).then(orNotFound('Weekly test'));
 
 const findWeeklyDuplicate = (studentId, subject, testType, weekDate) =>
   WeeklyTest.findOne({ studentId, subject, testType, weekDate: new Date(weekDate) })
@@ -40,10 +41,10 @@ const findMonthlyById = (id) =>
   MonthlyTest.findById(id).lean().then(normalize);
 
 const updateMonthly = (id, data) =>
-  MonthlyTest.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize);
+  MonthlyTest.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize).then(orNotFound('Monthly test'));
 
 const deleteMonthly = (id) =>
-  MonthlyTest.findByIdAndDelete(id).lean().then(normalize);
+  MonthlyTest.findByIdAndDelete(id).lean().then(normalize).then(orNotFound('Monthly test'));
 
 const findMonthlyDuplicate = (studentId, subject, testType, month, year) =>
   MonthlyTest.findOne({ studentId, subject, testType, month, year }).lean().then(normalize);

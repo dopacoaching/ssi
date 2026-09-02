@@ -76,7 +76,8 @@ async function login(req, res) {
     name: account.name || account.fullName,
     role: account.role || 'STUDENT'
   };
-  const entityType = account.role ? 'User' : 'Student';
+  // Student docs carry role 'STUDENT'; staff accounts are 'ADMIN'/'TEACHER'.
+  const entityType = account.role && account.role !== 'STUDENT' ? 'User' : 'Student';
   logAudit({ user: auditUser }, 'LOGIN', entityType, account.id, `${auditUser.name} logged in`);
 
   return ok(res, { 
