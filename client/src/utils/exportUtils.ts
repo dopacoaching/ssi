@@ -1019,9 +1019,17 @@ export function exportReportCardPDF({ student, ceRecords, remarks = [] }: Report
 }
 
 // ── Student Progress Report PDF ─────────────────────────────────────────────
-// Formal, printable progress report: monthly CE breakdown, subject-wise
-// weekly+monthly exam consolidation (out of 90/subject), a side-by-side
-// weekly-vs-grand-exam summary, and a four-line sign-off block.
+// Formal, printable progress report: monthly CE breakdown, a Theory Exam
+// section (per-subject marks as actually entered), a Weekly Exams section
+// (the combined MCQ weekly sessions, /360 each), a Grand Exam section (the
+// combined MCQ monthly session, /720), and a four-line sign-off block.
+
+// "Weekly Exam" / "Grand Exam" are the combined, all-subjects MCQ sessions —
+// distinct from the per-subject Theory tests that make up the Theory Exam
+// section. Matched purely by testType === 'MCQ', same as the server's own
+// CE aggregation (testController.js syncCEForMonth), which pools every MCQ
+// test's marks into the CE MCQ score regardless of subject text.
+const isMCQRow = (t: { testType: string }) => t.testType === 'MCQ';
 
 const PROGRESS_SUBJECTS: { label: string; mk: keyof CERow; mx: keyof CERow }[] = [
   { label: 'Physics',          mk: 'physicsMarks',          mx: 'physicsMax' },
@@ -1119,8 +1127,15 @@ export function exportProgressReportPDF({ student, ceRecords, weekly, monthly, m
     tableLineWidth: 0.2,
   });
 
-  // ── Section 2: Subject-wise Performance (weekly + monthly combined, /90) ──
+  // ── Theory Exam Section (per-subject marks as actually entered) ──
   const activeSubjects = PROGRESS_SUBJECTS.filter(s => selectedCE.some(r => (r[s.mx] as number) > 0));
+  const latestMaxBySubject: Record<string, number> = {};
+  activeSubjects.forEach(s => {
+    for (let i = selectedCE.length - 1; i >= 0; i--) {
+      const max = selectedCE[i][s.mx] as number;
+      if (max > 0) { latestMaxBySubject[s.label] = max; break; }
+    }
+  });
 
   let afterS1 = (doc as any).lastAutoTable?.finalY ?? 90;
   if (afterS1 > 250) { doc.addPage(); afterS1 = 14; }
@@ -1128,94 +1143,146 @@ export function exportProgressReportPDF({ student, ceRecords, weekly, monthly, m
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
-  doc.text('Subject-wise Performance (Weekly + Monthly Exams)', 14, afterS1 + 10);
+  doc.text('Theory Exam Section', 14, afterS1 + 10);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Subject totals shown are the marks each subject was most recently conducted out of — monthly totals vary, so no running total is calculated.', 14, afterS1 + 14.5);
 
-  let totalObtained = 0, totalMax = 0;
-  const s2Rows = selectedCE.map(r => {
-    const cells = activeSubjects.map(s => {
+  const theoryRows = selectedCE.map(r => [
+    `${MONTHS[r.month]} ${r.year}`,
+    ...activeSubjects.map(s => {
       const marks = r[s.mk] as number, max = r[s.mx] as number;
-      totalObtained += marks; totalMax += max;
       return max > 0 ? `${marks}/${max}` : '—';
-    });
-    return [`${MONTHS[r.month]} ${r.year}`, ...cells];
-  });
-  const overallPct = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
+    }),
+  ]);
 
   autoTable(doc, {
-    startY: afterS1 + 14,
-    head: [['Month', ...activeSubjects.map(s => s.label)]],
-    body: s2Rows,
-    foot: [[`Total Obtained: ${totalObtained.toFixed(1)}/${totalMax.toFixed(1)}`, ...Array(activeSubjects.length).fill(''), ]],
-    headStyles:  { fillColor: [79, 70, 229], fontSize: 8, fontStyle: 'bold', halign: 'center' },
+    startY: afterS1 + 18,
+    head: [['Month', ...activeSubjects.map(s => `${s.label} (${latestMaxBySubject[s.label] ?? '—'})`)]],
+    body: theoryRows,
+    headStyles:  { fillColor: [79, 70, 229], fontSize: 7.5, fontStyle: 'bold', halign: 'center' },
     bodyStyles:  { fontSize: 8, textColor: [30, 41, 59], halign: 'center' },
-    footStyles:  { fillColor: [238, 242, 255], textColor: [67, 56, 202], fontStyle: 'bold', fontSize: 8, halign: 'left' },
     columnStyles: { 0: { halign: 'left' } },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     tableLineColor: [226, 232, 240],
     tableLineWidth: 0.2,
   });
 
-  const afterS2 = (doc as any).lastAutoTable?.finalY ?? afterS1 + 40;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
-  if (overallPct >= 75)      doc.setTextColor(4, 120, 87);
-  else if (overallPct >= 50) doc.setTextColor(180, 83, 9);
-  else                       doc.setTextColor(185, 28, 28);
-  doc.text(`Overall Percentage: ${overallPct.toFixed(1)}%`, 14, afterS2 + 6);
-
-  // ── Section 3: Weekly vs Grand Exam Consolidation ──
-  let afterS2b = afterS2 + 14;
-  if (afterS2b > 250) { doc.addPage(); afterS2b = 14; }
+  // ── Weekly Exams Section (4/month, 360 each — combined MCQ weekly tests) ──
+  let afterTheory = (doc as any).lastAutoTable?.finalY ?? afterS1 + 40;
+  if (afterTheory > 250) { doc.addPage(); afterTheory = 14; }
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
-  doc.text('Weekly vs Grand Exam Consolidation', 14, afterS2b);
+  doc.text('Weekly Exams Section', 14, afterTheory + 10);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Up to 4 weekly exams/month, 360 marks each (max possible 1,440/month)', 14, afterTheory + 14.5);
 
-  const s3Rows = selectedCE.map(r => {
-    const wTests = weekly.filter(t => t.testType === 'Theory' && (() => {
-      const d = new Date(t.weekDate);
-      return d.getMonth() + 1 === r.month && d.getFullYear() === r.year;
-    })());
-    const mTests = monthly.filter(t => t.testType === 'Theory' && t.month === r.month && t.year === r.year);
-    const wMarks = wTests.reduce((a, t) => a + t.marks, 0), wMax = wTests.reduce((a, t) => a + t.maxMarks, 0);
-    const gMarks = mTests.reduce((a, t) => a + t.marks, 0), gMax = mTests.reduce((a, t) => a + t.maxMarks, 0);
-    const tMarks = wMarks + gMarks, tMax = wMax + gMax;
-    const pct = tMax > 0 ? (tMarks / tMax) * 100 : 0;
-    return [
-      `${MONTHS[r.month]} ${r.year}`,
-      wMax > 0 ? `${wMarks}/${wMax}` : '—',
-      gMax > 0 ? `${gMarks}/${gMax}` : '—',
-      tMax > 0 ? `${tMarks}/${tMax}` : '—',
-      tMax > 0 ? `${pct.toFixed(1)}%` : '—',
-    ];
+  const weeklyRows: any[] = [];
+  let weeklyOverallObtained = 0, weeklyOverallTotal = 0;
+  selectedCE.forEach(r => {
+    const exams = weekly
+      .filter(t => isMCQRow(t) && (() => {
+        const d = new Date(t.weekDate);
+        return d.getMonth() + 1 === r.month && d.getFullYear() === r.year;
+      })())
+      .sort((a, b) => new Date(a.weekDate).getTime() - new Date(b.weekDate).getTime());
+    if (exams.length === 0) return;
+    weeklyRows.push([{ content: `${MONTHS[r.month]} ${r.year}`, colSpan: 4, styles: { halign: 'left', fillColor: [238, 242, 255], textColor: [67, 56, 202], fontStyle: 'bold' } }]);
+    let mObtained = 0, mTotal = 0;
+    exams.forEach(e => {
+      mObtained += e.marks; mTotal += e.maxMarks;
+      const pct = e.maxMarks > 0 ? (e.marks / e.maxMarks) * 100 : 0;
+      weeklyRows.push([new Date(e.weekDate).toLocaleDateString(), String(e.marks), String(e.maxMarks), `${pct.toFixed(1)}%`]);
+    });
+    weeklyOverallObtained += mObtained; weeklyOverallTotal += mTotal;
+    const mPct = mTotal > 0 ? (mObtained / mTotal) * 100 : 0;
+    weeklyRows.push([
+      { content: 'Monthly Total', styles: { halign: 'left', fontStyle: 'bold', fillColor: [248, 250, 252] } },
+      { content: String(mObtained), styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+      { content: String(mTotal), styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+      { content: `${mPct.toFixed(1)}%`, styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+    ]);
   });
+  const weeklyOverallPct = weeklyOverallTotal > 0 ? (weeklyOverallObtained / weeklyOverallTotal) * 100 : 0;
 
-  autoTable(doc, {
-    startY: afterS2b + 4,
-    head: [['Month', 'Weekly Exam Mark', 'Grand Exam Mark', 'Total Obtained Mark', 'Percentage (%)']],
-    body: s3Rows,
-    headStyles:  { fillColor: [15, 23, 42], fontSize: 8.5, fontStyle: 'bold', halign: 'center' },
-    bodyStyles:  { fontSize: 8.5, textColor: [30, 41, 59], halign: 'center' },
-    columnStyles: { 0: { halign: 'left' }, 3: { fontStyle: 'bold' } },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-    tableLineColor: [226, 232, 240],
-    tableLineWidth: 0.2,
-    didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 4) {
-        const val = parseFloat(String(data.cell.text[0]));
-        if (!isNaN(val)) {
-          if (val >= 75)      data.cell.styles.textColor = [4, 120, 87];
-          else if (val >= 50) data.cell.styles.textColor = [180, 83, 9];
-          else                data.cell.styles.textColor = [185, 28, 28];
-          data.cell.styles.fontStyle = 'bold';
-        }
-      }
-    },
-  });
+  if (weeklyRows.length > 0) {
+    autoTable(doc, {
+      startY: afterTheory + 18,
+      head: [['Date', 'Obtained Marks', 'Total Marks', '%']],
+      body: weeklyRows,
+      foot: [[
+        { content: 'Overall Percentage (Weekly Exams)', styles: { halign: 'left' } },
+        String(weeklyOverallObtained), String(weeklyOverallTotal), `${weeklyOverallPct.toFixed(1)}%`,
+      ]],
+      headStyles:  { fillColor: [15, 23, 42], fontSize: 8.5, fontStyle: 'bold', halign: 'center' },
+      bodyStyles:  { fontSize: 8, textColor: [30, 41, 59], halign: 'center' },
+      footStyles:  { fillColor: [238, 242, 255], textColor: [67, 56, 202], fontStyle: 'bold', fontSize: 8, halign: 'center' },
+      columnStyles: { 0: { halign: 'left' } },
+      tableLineColor: [226, 232, 240],
+      tableLineWidth: 0.2,
+    });
+  } else {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.text('No weekly exam records for this period.', 14, afterTheory + 24);
+    (doc as any).lastAutoTable = { finalY: afterTheory + 24 };
+  }
+
+  // ── Grand Exam Section (720 per month — combined MCQ monthly test) ──
+  let afterWeekly = (doc as any).lastAutoTable?.finalY ?? afterTheory + 40;
+  if (afterWeekly > 250) { doc.addPage(); afterWeekly = 14; }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Grand Exam Section', 14, afterWeekly + 10);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text('1 grand/monthly exam, 720 marks each', 14, afterWeekly + 14.5);
+
+  const grandRows = selectedCE.map(r => {
+    const exams = monthly.filter(t => isMCQRow(t) && t.month === r.month && t.year === r.year);
+    const obtained = exams.reduce((a, t) => a + t.marks, 0), total = exams.reduce((a, t) => a + t.maxMarks, 0);
+    return { month: r.month, year: r.year, obtained, total, pct: total > 0 ? (obtained / total) * 100 : 0 };
+  }).filter(r => r.total > 0);
+  const grandOverallObtained = grandRows.reduce((a, r) => a + r.obtained, 0);
+  const grandOverallTotal    = grandRows.reduce((a, r) => a + r.total, 0);
+  const grandOverallPct      = grandOverallTotal > 0 ? (grandOverallObtained / grandOverallTotal) * 100 : 0;
+
+  if (grandRows.length > 0) {
+    autoTable(doc, {
+      startY: afterWeekly + 18,
+      head: [['Month', 'Obtained Marks', 'Total Marks', '%']],
+      body: grandRows.map(r => [`${MONTHS[r.month]} ${r.year}`, String(r.obtained), String(r.total), `${r.pct.toFixed(1)}%`]),
+      foot: [[
+        { content: 'Accumulated Total (Grand Exam Performance)', styles: { halign: 'left' } },
+        String(grandOverallObtained), String(grandOverallTotal), `${grandOverallPct.toFixed(1)}%`,
+      ]],
+      headStyles:  { fillColor: [15, 23, 42], fontSize: 8.5, fontStyle: 'bold', halign: 'center' },
+      bodyStyles:  { fontSize: 8.5, textColor: [30, 41, 59], halign: 'center' },
+      footStyles:  { fillColor: [238, 242, 255], textColor: [67, 56, 202], fontStyle: 'bold', fontSize: 8, halign: 'center' },
+      columnStyles: { 0: { halign: 'left' } },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      tableLineColor: [226, 232, 240],
+      tableLineWidth: 0.2,
+    });
+  } else {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.text('No grand exam records for this period.', 14, afterWeekly + 24);
+    (doc as any).lastAutoTable = { finalY: afterWeekly + 24 };
+  }
 
   // ── Section 4: Sign-off block ──
-  let signY = ((doc as any).lastAutoTable?.finalY ?? afterS2b + 40) + 26;
+  let signY = ((doc as any).lastAutoTable?.finalY ?? afterWeekly + 40) + 26;
   if (signY > 275) { doc.addPage(); signY = 60; }
 
   const signatures = ['Signature of Parent', 'Signature of Teacher', 'Signature of Class Teacher', 'Signature of Principal'];

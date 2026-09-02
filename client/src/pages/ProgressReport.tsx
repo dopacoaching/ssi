@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { Fragment, useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useStudents, Student } from '../hooks/useStudents';
 import { useCE, CERecord } from '../hooks/useCE';
@@ -20,9 +20,25 @@ const SUBJECTS: { label: string; mk: keyof CERecord; mx: keyof CERecord }[] = [
   { label: 'Computer Science', mk: 'computerScienceMarks', mx: 'computerScienceMax' },
 ];
 
-const cardCls = 'bg-white border border-gray-200 rounded-2xl overflow-hidden print:border-0 print:rounded-none';
-const thCls   = 'px-3 py-2 text-xs font-bold text-white bg-slate-900 text-center';
-const tdCls   = 'px-3 py-2 text-sm text-gray-700 text-center border-b border-gray-100';
+// "Weekly Exam" / "Grand Exam" are the combined, all-subjects MCQ sessions
+// (weekly ones up to /360, the monthly one up to /720) — distinct from the
+// per-subject Theory tests that make up the Theory Exam section below.
+// Matched purely by testType === 'MCQ', same as the server's own CE
+// aggregation (testController.js syncCEForMonth) — it pools every MCQ
+// test's marks into the CE MCQ score regardless of subject text, so this
+// report must use the same rule or it'll silently disagree with the CE score
+// for a test entered under a specific subject instead of "General MCQ".
+const isMCQ = (t: { testType: string }) => t.testType === 'MCQ';
+
+const cardCls   = 'bg-white border border-gray-200 rounded-2xl overflow-hidden print:border-0 print:rounded-none';
+const thCls     = 'px-3 py-2 text-xs font-bold text-white bg-slate-900 text-center';
+const tdCls     = 'px-3 py-2 text-sm text-gray-700 text-center border-b border-gray-100';
+const groupCls  = 'px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 text-left';
+const subtotalCls = 'px-3 py-2 text-xs font-bold text-gray-700 bg-gray-50 text-center border-b border-gray-100';
+
+function pctColor(pct: number) {
+  return pct >= 75 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600';
+}
 
 export default function ProgressReport() {
   const { id } = useParams<{ id: string }>();
@@ -55,30 +71,76 @@ export default function ProgressReport() {
     return base;
   }, [sortedRecords, selectedMonths, selectedYear]);
 
+  // ── Theory Exam Section ──
+  // Subject columns with any data; each subject's header bracket shows the
+  // max marks actually entered for the most recent month in view (monthly
+  // totals vary, so we don't try to compute one dynamic overall total).
   const activeSubjects = useMemo(
     () => SUBJECTS.filter(s => period.some(r => (r[s.mx] as number) > 0)),
     [period]
   );
-
-  const { totalObtained, totalMax } = useMemo(() => {
-    let obtained = 0, max = 0;
-    period.forEach(r => activeSubjects.forEach(s => { obtained += r[s.mk] as number; max += r[s.mx] as number; }));
-    return { totalObtained: obtained, totalMax: max };
-  }, [period, activeSubjects]);
-  const overallPct = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
-
-  const consolidation = useMemo(() => period.map(r => {
-    const wTests = weekly.filter(t => {
-      if (t.testType !== 'Theory') return false;
-      const d = new Date(t.weekDate);
-      return d.getMonth() + 1 === r.month && d.getFullYear() === r.year;
+  const latestMaxBySubject = useMemo(() => {
+    const map: Record<string, number> = {};
+    activeSubjects.forEach(s => {
+      for (let i = period.length - 1; i >= 0; i--) {
+        const max = period[i][s.mx] as number;
+        if (max > 0) { map[s.label] = max; break; }
+      }
     });
-    const mTests = monthly.filter(t => t.testType === 'Theory' && t.month === r.month && t.year === r.year);
-    const wMarks = wTests.reduce((a, t) => a + t.marks, 0), wMax = wTests.reduce((a, t) => a + t.maxMarks, 0);
-    const gMarks = mTests.reduce((a, t) => a + t.marks, 0), gMax = mTests.reduce((a, t) => a + t.maxMarks, 0);
-    const tMarks = wMarks + gMarks, tMax = wMax + gMax;
-    return { month: r.month, year: r.year, wMarks, wMax, gMarks, gMax, tMarks, tMax, pct: tMax > 0 ? (tMarks / tMax) * 100 : 0 };
-  }), [period, weekly, monthly]);
+    return map;
+  }, [activeSubjects, period]);
+
+  // ── Weekly Exams Section ── (4/month, /360 each — combined MCQ weekly tests)
+  // Bucket MCQ weekly tests by month once, rather than re-scanning the full
+  // array for every period row.
+  const weeklyMCQByMonth = useMemo(() => {
+    const map = new Map<string, typeof weekly>();
+    weekly.filter(isMCQ).forEach(t => {
+      const d = new Date(t.weekDate);
+      const key = `${d.getMonth() + 1}-${d.getFullYear()}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(t);
+    });
+    return map;
+  }, [weekly]);
+
+  const weeklyExamsByMonth = useMemo(() => period.map(r => {
+    const exams = [...(weeklyMCQByMonth.get(`${r.month}-${r.year}`) ?? [])]
+      .sort((a, b) => new Date(a.weekDate).getTime() - new Date(b.weekDate).getTime());
+    const obtained = exams.reduce((a, t) => a + t.marks, 0);
+    const total    = exams.reduce((a, t) => a + t.maxMarks, 0);
+    return { month: r.month, year: r.year, exams, obtained, total, pct: total > 0 ? (obtained / total) * 100 : 0 };
+  }), [period, weeklyMCQByMonth]);
+
+  const weeklyOverall = useMemo(() => {
+    const obtained = weeklyExamsByMonth.reduce((a, m) => a + m.obtained, 0);
+    const total    = weeklyExamsByMonth.reduce((a, m) => a + m.total, 0);
+    return { obtained, total, pct: total > 0 ? (obtained / total) * 100 : 0 };
+  }, [weeklyExamsByMonth]);
+
+  // ── Grand Exam Section ── (/720 per month — combined MCQ monthly test)
+  const grandMCQByMonth = useMemo(() => {
+    const map = new Map<string, typeof monthly>();
+    monthly.filter(isMCQ).forEach(t => {
+      const key = `${t.month}-${t.year}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(t);
+    });
+    return map;
+  }, [monthly]);
+
+  const grandExamsByMonth = useMemo(() => period.map(r => {
+    const exams = grandMCQByMonth.get(`${r.month}-${r.year}`) ?? [];
+    const obtained = exams.reduce((a, t) => a + t.marks, 0);
+    const total    = exams.reduce((a, t) => a + t.maxMarks, 0);
+    return { month: r.month, year: r.year, obtained, total, pct: total > 0 ? (obtained / total) * 100 : 0 };
+  }), [period, grandMCQByMonth]);
+
+  const grandOverall = useMemo(() => {
+    const obtained = grandExamsByMonth.reduce((a, m) => a + m.obtained, 0);
+    const total    = grandExamsByMonth.reduce((a, m) => a + m.total, 0);
+    return { obtained, total, pct: total > 0 ? (obtained / total) * 100 : 0 };
+  }, [grandExamsByMonth]);
 
   async function handleDownload() {
     if (!student) return;
@@ -160,7 +222,7 @@ export default function ProgressReport() {
               <EmptyState title="No completed months" description="No CE records match the current filter — this student may not have any completed months yet." icon="document" />
             ) : (
               <>
-                {/* Section 1: Monthly CE Analysis */}
+                {/* Monthly CE Analysis */}
                 <div className={cardCls}>
                   <div className="px-4 py-3 border-b border-gray-100">
                     <h3 className="text-sm font-bold text-gray-700 uppercase tracking-tight">Monthly CE (Continuous Evaluation) Analysis</h3>
@@ -191,79 +253,133 @@ export default function ProgressReport() {
                   </div>
                 </div>
 
-                {/* Section 2 + 3 side by side */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:grid-cols-1">
-                  {/* Section 2: Subject-wise Performance */}
-                  <div className={cardCls}>
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <h3 className="text-sm font-bold text-gray-700 uppercase tracking-tight">Subject-wise Performance</h3>
-                      <p className="text-[11px] text-gray-400 mt-0.5">4 weekly exams (15 each) + 1 monthly exam (30) = /90 per subject</p>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead><tr>
-                          <th className={`${thCls} text-left`}>Month</th>
-                          {activeSubjects.map(s => <th key={s.label} className={thCls}>{s.label}</th>)}
-                        </tr></thead>
-                        <tbody>
-                          {period.map(r => (
-                            <tr key={r.id}>
-                              <td className={`${tdCls} text-left font-medium`}>{MONTHS[r.month]} {r.year}</td>
-                              {activeSubjects.map(s => {
-                                const marks = r[s.mk] as number, max = r[s.mx] as number;
-                                return <td key={s.label} className={tdCls}>{max > 0 ? `${marks}/${max}` : '—'}</td>;
-                              })}
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="bg-indigo-50">
-                            <td className="px-3 py-2 text-xs font-bold text-indigo-700 text-left" colSpan={activeSubjects.length}>
-                              Total Obtained Marks: {totalObtained.toFixed(1)} / {totalMax.toFixed(1)}
-                            </td>
-                            <td className="px-3 py-2 text-xs font-bold text-indigo-700 text-center whitespace-nowrap">
-                              {overallPct.toFixed(1)}%
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
+                {/* 1. Theory Exam Section */}
+                <div className={cardCls}>
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-700 uppercase tracking-tight">Theory Exam Section</h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Subject totals shown are the marks each subject's exam was most recently conducted out of — monthly totals vary, so no single running total is calculated.</p>
                   </div>
-
-                  {/* Section 3: Weekly vs Grand Exam Consolidation */}
-                  <div className={cardCls}>
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <h3 className="text-sm font-bold text-gray-700 uppercase tracking-tight">Exam Consolidation</h3>
-                      <p className="text-[11px] text-gray-400 mt-0.5">Weekly exams vs. grand/monthly exam, all subjects combined</p>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead><tr>
-                          <th className={`${thCls} text-left`}>Month</th>
-                          <th className={thCls}>Weekly Exam Mark</th>
-                          <th className={thCls}>Grand Exam Mark</th>
-                          <th className={thCls}>Total Obtained Mark</th>
-                          <th className={thCls}>Percentage (%)</th>
-                        </tr></thead>
-                        <tbody>
-                          {consolidation.map(c => (
-                            <tr key={`${c.month}-${c.year}`}>
-                              <td className={`${tdCls} text-left font-medium`}>{MONTHS[c.month]} {c.year}</td>
-                              <td className={tdCls}>{c.wMax > 0 ? `${c.wMarks}/${c.wMax}` : '—'}</td>
-                              <td className={tdCls}>{c.gMax > 0 ? `${c.gMarks}/${c.gMax}` : '—'}</td>
-                              <td className={`${tdCls} font-bold`}>{c.tMax > 0 ? `${c.tMarks}/${c.tMax}` : '—'}</td>
-                              <td className={`${tdCls} font-bold ${c.pct >= 75 ? 'text-emerald-600' : c.pct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
-                                {c.tMax > 0 ? `${c.pct.toFixed(1)}%` : '—'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead><tr>
+                        <th className={`${thCls} text-left`}>Month</th>
+                        {activeSubjects.map(s => (
+                          <th key={s.label} className={thCls}>{s.label} ({latestMaxBySubject[s.label] ?? '—'})</th>
+                        ))}
+                      </tr></thead>
+                      <tbody>
+                        {period.map(r => (
+                          <tr key={r.id}>
+                            <td className={`${tdCls} text-left font-medium`}>{MONTHS[r.month]} {r.year}</td>
+                            {activeSubjects.map(s => {
+                              const marks = r[s.mk] as number, max = r[s.mx] as number;
+                              return <td key={s.label} className={tdCls}>{max > 0 ? `${marks}/${max}` : '—'}</td>;
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
-                {/* Section 4: Sign-off */}
+                {/* 2. Weekly Exams Section */}
+                <div className={cardCls}>
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-700 uppercase tracking-tight">Weekly Exams Section</h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Up to 4 weekly exams/month, 360 marks each (max possible 1,440/month)</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead><tr>
+                        <th className={`${thCls} text-left`}>Date</th>
+                        <th className={thCls}>Obtained Marks</th>
+                        <th className={thCls}>Total Marks</th>
+                        <th className={thCls}>%</th>
+                      </tr></thead>
+                      <tbody>
+                        {weeklyExamsByMonth.every(m => m.exams.length === 0) && (
+                          <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-400">No weekly exam records for this period.</td></tr>
+                        )}
+                        {weeklyExamsByMonth.map(m => m.exams.length === 0 ? null : (
+                          <Fragment key={`${m.month}-${m.year}`}>
+                            <tr>
+                              <td className={groupCls} colSpan={4}>{MONTHS[m.month]} {m.year}</td>
+                            </tr>
+                            {m.exams.map(e => (
+                              <tr key={e.id}>
+                                <td className={`${tdCls} text-left`}>{new Date(e.weekDate).toLocaleDateString()}</td>
+                                <td className={tdCls}>{e.marks}</td>
+                                <td className={tdCls}>{e.maxMarks}</td>
+                                <td className={`${tdCls} ${pctColor(e.maxMarks > 0 ? (e.marks / e.maxMarks) * 100 : 0)}`}>
+                                  {e.maxMarks > 0 ? `${((e.marks / e.maxMarks) * 100).toFixed(1)}%` : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr>
+                              <td className={`${subtotalCls} text-left`}>Monthly Total</td>
+                              <td className={subtotalCls}>{m.obtained}</td>
+                              <td className={subtotalCls}>{m.total}</td>
+                              <td className={`${subtotalCls} ${pctColor(m.pct)}`}>{m.pct.toFixed(1)}%</td>
+                            </tr>
+                          </Fragment>
+                        ))}
+                      </tbody>
+                      {weeklyOverall.total > 0 && (
+                        <tfoot>
+                          <tr className="bg-indigo-50">
+                            <td className="px-3 py-2 text-xs font-bold text-indigo-700 text-left">Overall Percentage (Weekly Exams)</td>
+                            <td className="px-3 py-2 text-xs font-bold text-indigo-700 text-center">{weeklyOverall.obtained}</td>
+                            <td className="px-3 py-2 text-xs font-bold text-indigo-700 text-center">{weeklyOverall.total}</td>
+                            <td className={`px-3 py-2 text-xs font-bold text-center ${pctColor(weeklyOverall.pct)}`}>{weeklyOverall.pct.toFixed(1)}%</td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </div>
+
+                {/* 3. Grand Exam Section */}
+                <div className={cardCls}>
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-700 uppercase tracking-tight">Grand Exam Section</h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">1 grand/monthly exam, 720 marks each</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead><tr>
+                        <th className={`${thCls} text-left`}>Month</th>
+                        <th className={thCls}>Obtained Marks</th>
+                        <th className={thCls}>Total Marks</th>
+                        <th className={thCls}>%</th>
+                      </tr></thead>
+                      <tbody>
+                        {grandExamsByMonth.every(m => m.total === 0) && (
+                          <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-400">No grand exam records for this period.</td></tr>
+                        )}
+                        {grandExamsByMonth.filter(m => m.total > 0).map(m => (
+                          <tr key={`${m.month}-${m.year}`}>
+                            <td className={`${tdCls} text-left font-medium`}>{MONTHS[m.month]} {m.year}</td>
+                            <td className={tdCls}>{m.obtained}</td>
+                            <td className={tdCls}>{m.total}</td>
+                            <td className={`${tdCls} font-bold ${pctColor(m.pct)}`}>{m.pct.toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      {grandOverall.total > 0 && (
+                        <tfoot>
+                          <tr className="bg-indigo-50">
+                            <td className="px-3 py-2 text-xs font-bold text-indigo-700 text-left">Accumulated Total (Grand Exam Performance)</td>
+                            <td className="px-3 py-2 text-xs font-bold text-indigo-700 text-center">{grandOverall.obtained}</td>
+                            <td className="px-3 py-2 text-xs font-bold text-indigo-700 text-center">{grandOverall.total}</td>
+                            <td className={`px-3 py-2 text-xs font-bold text-center ${pctColor(grandOverall.pct)}`}>{grandOverall.pct.toFixed(1)}%</td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </div>
+
+                {/* 4. Sign-off */}
                 <div className={`${cardCls} p-6`}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
                     {['Signature of Parent', 'Signature of Teacher', 'Signature of Class Teacher', 'Signature of Principal'].map(label => (
