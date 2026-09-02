@@ -1,7 +1,7 @@
 const ceModel = require('../models/ceModel');
 const studentModel = require('../models/studentModel');
 const testModel = require('../models/testModel');
-const prisma = require('../utils/prisma');
+const { BatchApproval, BatchWorkingDays } = require('../models/schemas');
 const { computeCE } = require('../utils/ceScoring');
 const { logAudit } = require('../utils/audit');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
@@ -12,9 +12,7 @@ const VALID_NOTES_STATUSES = new Set(['COMPLETE', 'PARTIAL', 'INCOMPLETE']);
 async function isBatchLocked(studentId, month, year) {
   const student = await studentModel.findById(studentId);
   if (!student) return false;
-  const approval = await prisma.batchApproval.findFirst({
-    where: { batchId: student.batchId, month, year }
-  });
+  const approval = await BatchApproval.findOne({ batchId: student.batchId, month, year }).lean();
   return !!approval;
 }
 
@@ -87,9 +85,7 @@ async function list(req, res) {
 
   const records = await ceModel.findByStudent(req.params.id);
 
-  const approvals = await prisma.batchApproval.findMany({
-    where: { batchId: student.batchId }
-  });
+  const approvals = await BatchApproval.find({ batchId: student.batchId }).lean();
 
   const approvalSet = new Set(approvals.map(a => `${a.year}-${a.month}`));
 
@@ -133,9 +129,7 @@ async function upsert(req, res) {
   }
 
   // Working days are set once per batch per month; attendance can't be graded without them.
-  const wdRecord = await prisma.batchWorkingDays.findFirst({
-    where: { batchId: student.batchId, month: m, year: y }
-  });
+  const wdRecord = await BatchWorkingDays.findOne({ batchId: student.batchId, month: m, year: y }).lean();
   if (!wdRecord) {
     return badRequest(res, `Set the total working days for this batch for ${MONTHS[m]} ${y} before recording attendance`);
   }

@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const batchModel = require('../models/batchModel');
 const userModel = require('../models/userModel');
 const studentModel = require('../models/studentModel');
-const prisma = require('../utils/prisma');
+const { Student, CERecord, BatchApproval, BatchWorkingDays, normalize } = require('../models/schemas');
 const { logAudit } = require('../utils/audit');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
 
@@ -103,14 +103,22 @@ async function batchAnalytics(req, res) {
     return forbidden(res);
   }
 
-  const students = await prisma.student.findMany({
-    where: { batchId: req.params.id, isActive: true },
-    select: {
-      id: true, fullName: true, regNumber: true,
-      ceRecords: { orderBy: [{ year: 'asc' }, { month: 'asc' }] },
-    },
-    orderBy: { regNumber: 'asc' },
-  });
+  const studentDocs = await Student.find({ batchId: req.params.id, isActive: true })
+    .select('fullName regNumber').sort({ regNumber: 1 }).lean();
+  const ceRecords = await CERecord.find({ studentId: { $in: studentDocs.map(s => s._id) } })
+    .sort({ year: 1, month: 1 }).lean();
+  const ceByStudent = new Map();
+  for (const r of ceRecords) {
+    const k = String(r.studentId);
+    if (!ceByStudent.has(k)) ceByStudent.set(k, []);
+    ceByStudent.get(k).push(r);
+  }
+  const students = studentDocs.map(s => ({
+    id: String(s._id),
+    fullName: s.fullName,
+    regNumber: s.regNumber,
+    ceRecords: ceByStudent.get(String(s._id)) || [],
+  }));
 
   const monthMap = {};
   students.forEach(s => {
@@ -171,11 +179,9 @@ async function listBatchApprovals(req, res) {
   if (req.user.role === 'TEACHER' && !req.user.batchIds.includes(id)) {
     return forbidden(res);
   }
-  const approvals = await prisma.batchApproval.findMany({
-    where: { batchId: id },
-    orderBy: [{ year: 'desc' }, { month: 'desc' }]
-  });
-  return ok(res, approvals);
+  const approvals = await BatchApproval.find({ batchId: id })
+    .sort({ year: -1, month: -1 }).lean();
+  return ok(res, normalize(approvals));
 }
 
 async function toggleBatchApproval(req, res) {
@@ -193,18 +199,16 @@ async function toggleBatchApproval(req, res) {
   const batchName = batchInfo?.name || id;
 
   if (isApproved) {
-    const approval = await prisma.batchApproval.upsert({
-      where: { batchId_month_year: { batchId: id, month: m, year: y } },
-      create: { batchId: id, month: m, year: y },
-      update: {}
-    });
+    const approval = await BatchApproval.findOneAndUpdate(
+      { batchId: id, month: m, year: y },
+      { $setOnInsert: { batchId: id, month: m, year: y } },
+      { upsert: true, new: true }
+    ).lean();
     logAudit(req, 'CREATE', 'BatchApproval', id,
       `Locked batch "${batchName}" for ${MONTHS[m]} ${y}`);
-    return ok(res, approval, 'Batch approved and locked');
+    return ok(res, normalize(approval), 'Batch approved and locked');
   } else {
-    await prisma.batchApproval.deleteMany({
-      where: { batchId: id, month: m, year: y }
-    });
+    await BatchApproval.deleteMany({ batchId: id, month: m, year: y });
     logAudit(req, 'DELETE', 'BatchApproval', id,
       `Unlocked batch "${batchName}" for ${MONTHS[m]} ${y}`);
     return ok(res, null, 'Batch unlocked');
@@ -216,11 +220,9 @@ async function listBatchWorkingDays(req, res) {
   if (req.user.role === 'TEACHER' && !req.user.batchIds.includes(id)) {
     return forbidden(res);
   }
-  const records = await prisma.batchWorkingDays.findMany({
-    where: { batchId: id },
-    orderBy: [{ year: 'desc' }, { month: 'desc' }]
-  });
-  return ok(res, records);
+  const records = await BatchWorkingDays.find({ batchId: id })
+    .sort({ year: -1, month: -1 }).lean();
+  return ok(res, normalize(records));
 }
 
 async function setBatchWorkingDays(req, res) {
@@ -247,18 +249,18 @@ async function setBatchWorkingDays(req, res) {
 
   // Teachers cannot edit a month the admin has approved and locked.
   if (req.user.role === 'TEACHER') {
-    const approval = await prisma.batchApproval.findFirst({ where: { batchId: id, month: m, year: y } });
+    const approval = await BatchApproval.findOne({ batchId: id, month: m, year: y }).lean();
     if (approval) return forbidden(res, 'This month has been approved by admin and is locked');
   }
 
   const batchInfo = await batchModel.findById(id);
   const batchName = batchInfo?.name || id;
 
-  const record = await prisma.batchWorkingDays.upsert({
-    where: { batchId_month_year: { batchId: id, month: m, year: y } },
-    create: { batchId: id, month: m, year: y, workingDays: wd },
-    update: { workingDays: wd }
-  });
+  const record = normalize(await BatchWorkingDays.findOneAndUpdate(
+    { batchId: id, month: m, year: y },
+    { $set: { workingDays: wd }, $setOnInsert: { batchId: id, month: m, year: y } },
+    { upsert: true, new: true }
+  ).lean());
 
   logAudit(req, 'UPDATE', 'BatchWorkingDays', record.id,
     `Set working days for batch "${batchName}" ${MONTHS[m]} ${y} → ${wd} days`);
@@ -281,10 +283,10 @@ async function transferStudents(req, res) {
     return notFound(res, 'Target batch not found');
   }
 
-  await prisma.student.updateMany({
-    where: { id: { in: studentIds } },
-    data: { batchId: targetBatchId }
-  });
+  await Student.updateMany(
+    { _id: { $in: studentIds } },
+    { batchId: targetBatchId }
+  );
 
   logAudit(req, 'UPDATE', 'Student', '', `Transferred ${studentIds.length} student(s) to batch "${targetBatch.name}"`);
   return ok(res, null, `${studentIds.length} students transferred successfully`);

@@ -1,16 +1,21 @@
-const prisma = require('../utils/prisma');
+const { User, normalize } = require('./schemas');
 
-const findByEmail = (email) => prisma.user.findUnique({ where: { email } });
+const findByEmail = (email) =>
+  User.findOne({ email }).lean().then(normalize);
 
-const findById = (id) => prisma.user.findUnique({ where: { id } });
+const findById = (id) =>
+  User.findById(id).lean().then(normalize);
 
-const create = (data) => prisma.user.create({ data });
+const create = (data) =>
+  User.create(data).then((doc) => normalize(doc.toObject()));
 
 const findAll = () =>
-  prisma.user.findMany({
-    select: { id: true, email: true, name: true, role: true, batchIds: true, isActive: true, createdAt: true },
-  });
+  User.find()
+    .select('email name role batchIds isActive createdAt')
+    .lean()
+    .then(normalize);
 
-const update = (id, data) => prisma.user.update({ where: { id }, data });
+const update = (id, data) =>
+  User.findByIdAndUpdate(id, data, { new: true }).lean().then(normalize);
 
 module.exports = { findByEmail, findById, create, findAll, update };

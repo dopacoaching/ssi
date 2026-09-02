@@ -23,7 +23,7 @@ All data can be exported to Excel (.xlsx) or PDF at the individual student level
 | Styling | Tailwind CSS |
 | State | Redux Toolkit |
 | Backend | Node.js + Express |
-| ORM | Prisma |
+| ODM | Mongoose |
 | Database | MongoDB Atlas |
 | Auth | JWT in httpOnly cookies + bcrypt (saltRounds=12) |
 

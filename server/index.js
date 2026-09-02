@@ -4,6 +4,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const helmet = require('helmet');
+const { connectDB } = require('./utils/db');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -18,6 +19,13 @@ app.use(helmet());
 app.use(cors({ origin: allowedOrigin, credentials: true }));
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
+
+// Ensure the MongoDB connection is established (and reused) before any route
+// touches the database. On Vercel this runs per cold start; the connection is
+// cached on `global` thereafter.
+app.use((req, res, next) => {
+  connectDB().then(() => next()).catch(next);
+});
 
 // API Routes
 app.use('/api/auth',   require('./routes/auth'));
