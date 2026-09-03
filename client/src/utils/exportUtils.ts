@@ -1286,22 +1286,26 @@ export function exportProgressReportPDF({ student, ceRecords, weekly, monthly, m
   }
 
   // ── Section 4: Sign-off block ──
+  // Class Teacher on the left, Parent on the right, Principal centred and
+  // dropped a little below the other two.
   let signY = ((doc as any).lastAutoTable?.finalY ?? afterWeekly + 40) + 26;
-  if (signY > 275) { doc.addPage(); signY = 60; }
+  if (signY > 262) { doc.addPage(); signY = 60; }
 
-  const signatures = ['Signature of Class Teacher', 'Signature of Principal', 'Signature of Parent'];
-  const colX = [14, 76, 138];
-  signatures.forEach((label, i) => {
-    const x = colX[i];
-    const y = signY;
+  const lineW = 54;
+  const drawSignature = (label: string, x: number, y: number) => {
     doc.setDrawColor(100, 116, 139);
     doc.setLineWidth(0.3);
-    doc.line(x, y, x + 54, y);
+    doc.line(x, y, x + lineW, y);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(71, 85, 105);
     doc.text(label, x, y + 5);
-  });
+  };
+
+  const pageW = doc.internal.pageSize.getWidth();
+  drawSignature('Signature of Class Teacher', 14, signY);
+  drawSignature('Signature of Parent', pageW - 14 - lineW, signY);
+  drawSignature('Signature of Principal', (pageW - lineW) / 2, signY + 18);
 
   // Footer on every page
   addStandardFooter(doc);

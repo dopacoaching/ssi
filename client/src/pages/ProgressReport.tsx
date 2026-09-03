@@ -385,15 +385,21 @@ export default function ProgressReport() {
                   </div>
                 </div>
 
-                {/* 4. Sign-off */}
+                {/* 4. Sign-off — Class Teacher left, Parent right, Principal centred and lower */}
                 <div className={`${cardCls} p-6`}>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-10">
-                    {['Signature of Class Teacher', 'Signature of Principal', 'Signature of Parent'].map(label => (
-                      <div key={label}>
+                  <div className="flex justify-between gap-x-8">
+                    {['Signature of Class Teacher', 'Signature of Parent'].map(label => (
+                      <div key={label} className="w-48 max-w-[45%]">
                         <div className="border-b border-gray-400 h-8" />
                         <p className="text-xs text-gray-500 mt-1.5">{label}</p>
                       </div>
                     ))}
+                  </div>
+                  <div className="flex justify-center mt-12">
+                    <div className="w-48">
+                      <div className="border-b border-gray-400 h-8" />
+                      <p className="text-xs text-gray-500 mt-1.5 text-center">Signature of Principal</p>
+                    </div>
                   </div>
                 </div>
               </>
