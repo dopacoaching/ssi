@@ -385,20 +385,27 @@ export default function ProgressReport() {
                   </div>
                 </div>
 
-                {/* 4. Sign-off — Class Teacher left, Parent right, Principal centred and lower */}
-                <div className={`${cardCls} p-6`}>
-                  <div className="flex justify-between gap-x-8">
-                    {['Signature of Class Teacher', 'Signature of Parent'].map(label => (
-                      <div key={label} className="w-48 max-w-[45%]">
-                        <div className="border-b border-gray-400 h-8" />
-                        <p className="text-xs text-gray-500 mt-1.5">{label}</p>
-                      </div>
-                    ))}
+                {/* 4. Verification — Class Teacher left, Parent right, Principal centred and lower */}
+                <div className={cardCls}>
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-700 uppercase tracking-tight">Verification &amp; Approval</h3>
                   </div>
-                  <div className="flex justify-center mt-12">
-                    <div className="w-48">
-                      <div className="border-b border-gray-400 h-8" />
-                      <p className="text-xs text-gray-500 mt-1.5 text-center">Signature of Principal</p>
+                  <div className="px-6 pt-14 pb-8">
+                    <div className="flex justify-between gap-x-12">
+                      {['Class Teacher', 'Parent / Guardian'].map(role => (
+                        <div key={role} className="w-52 max-w-[45%]">
+                          <div className="border-t border-slate-400" />
+                          <p className="text-xs font-semibold text-slate-700 mt-2">{role}</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">Signature &amp; Date</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-center mt-16">
+                      <div className="w-52 text-center">
+                        <div className="border-t border-slate-400" />
+                        <p className="text-xs font-semibold text-slate-700 mt-2">Principal</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Signature &amp; Date</p>
+                      </div>
                     </div>
                   </div>
                 </div>

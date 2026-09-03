@@ -1285,27 +1285,39 @@ export function exportProgressReportPDF({ student, ceRecords, weekly, monthly, m
     (doc as any).lastAutoTable = { finalY: afterWeekly + 24 };
   }
 
-  // ── Section 4: Sign-off block ──
+  // ── Section 4: Verification & Approval ──
   // Class Teacher on the left, Parent on the right, Principal centred and
-  // dropped a little below the other two.
-  let signY = ((doc as any).lastAutoTable?.finalY ?? afterWeekly + 40) + 26;
-  if (signY > 262) { doc.addPage(); signY = 60; }
+  // dropped below the other two. Space is left above each rule for a wet
+  // signature; the role is printed beneath it.
+  let headingY = ((doc as any).lastAutoTable?.finalY ?? afterWeekly + 40) + 22;
+  if (headingY > 220) { doc.addPage(); headingY = 30; }
 
-  const lineW = 54;
-  const drawSignature = (label: string, x: number, y: number) => {
-    doc.setDrawColor(100, 116, 139);
-    doc.setLineWidth(0.3);
-    doc.line(x, y, x + lineW, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(label, x, y + 5);
-  };
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Verification & Approval', 14, headingY);
 
   const pageW = doc.internal.pageSize.getWidth();
-  drawSignature('Signature of Class Teacher', 14, signY);
-  drawSignature('Signature of Parent', pageW - 14 - lineW, signY);
-  drawSignature('Signature of Principal', (pageW - lineW) / 2, signY + 18);
+  const sigLineW = 60;
+  const rowY = headingY + 28;
+
+  const drawSignature = (role: string, x: number, y: number) => {
+    doc.setDrawColor(100, 116, 139);
+    doc.setLineWidth(0.4);
+    doc.line(x, y, x + sigLineW, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(30, 41, 59);
+    doc.text(role, x, y + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text('Signature & Date', x, y + 9);
+  };
+
+  drawSignature('Class Teacher', 14, rowY);
+  drawSignature('Parent / Guardian', pageW - 14 - sigLineW, rowY);
+  drawSignature('Principal', (pageW - sigLineW) / 2, rowY + 24);
 
   // Footer on every page
   addStandardFooter(doc);
