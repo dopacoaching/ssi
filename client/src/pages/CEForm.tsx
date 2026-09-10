@@ -91,8 +91,8 @@ export default function CEForm({ studentId, batchId, existingRecords = [], onSav
       return;
     }
     const leave = Number(form.leaveDays);
-    if (!Number.isInteger(leave) || leave < 0) {
-      toast.error('Leave days must be a whole number of 0 or more');
+    if (!Number.isFinite(leave) || leave < 0) {
+      toast.error('Leave days must be a number of 0 or more');
       return;
     }
     if (leave > workingDays) {
@@ -160,9 +160,9 @@ export default function CEForm({ studentId, batchId, existingRecords = [], onSav
 
         <div>
           <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">Leave days taken</label>
-          <input type="number" required min={0} max={workingDays ?? undefined} step={1} value={form.leaveDays} disabled={isLocked || workingDays == null}
-            onChange={(e) => set('leaveDays', e.target.value)} className={inputCls} placeholder="e.g. 0, 1, 2…" />
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">0 leave → 3 marks · 1 → 2 · 2 → 1 · 3+ → 0. Medical certificate keeps full attendance.</p>
+          <input type="number" required min={0} max={workingDays ?? undefined} step="any" value={form.leaveDays} disabled={isLocked || workingDays == null}
+            onChange={(e) => set('leaveDays', e.target.value)} className={inputCls} placeholder="e.g. 0, 1, 1.5, 2…" />
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">1 mark lost per leave day (half-day = ½ mark), down to 0. Medical certificate keeps full attendance.</p>
         </div>
 
         <div className="flex items-center gap-2 pt-1">

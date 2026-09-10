@@ -22,16 +22,17 @@ function computeMCQScore(mcqPct) {
   return 1.0;
 }
 
-// Attendance (max 3) is graded on the number of leave days taken in the month.
-// A medical certificate exempts the student entirely — they keep full attendance.
-//   medical cert → 3 | 0 leaves → 3 | 1 leave → 2 | 2 leaves → 1 | 3+ leaves → 0
+// Attendance (max 3) is graded on the number of leave days taken in the month:
+// one mark lost per leave day, floored at 0. Half-days are allowed, so leaveDays
+// can be fractional (e.g. 1.5 → 1.5 marks). A medical certificate exempts the
+// student entirely — they keep full attendance.
+//   medical cert → 3 | 0 leaves → 3 | 1 → 2 | 1.5 → 1.5 | 2 → 1 | 3+ → 0
 function computeAttendanceScore(leaveDays, hasMedCert) {
   if (hasMedCert) return 3.0;
   const days = Number(leaveDays) || 0;
   if (days <= 0) return 3.0;
-  if (days === 1) return 2.0;
-  if (days === 2) return 1.0;
-  return 0.0;
+  // Round to 2dp to shed binary-float noise (e.g. 3 - 0.7 = 2.2999999…).
+  return Math.max(0, Math.round((3 - days) * 100) / 100);
 }
 
 function computeNotesScore(notesStatus) {

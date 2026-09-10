@@ -226,7 +226,7 @@ export default function StudentPortal() {
                                   {r.leaveDays}
                                   {r.hasMedCert && <span className="ml-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">(medical)</span>}
                                 </td>
-                                <td className="py-2.5 pl-4 text-right font-semibold">{Math.max(0, r.workingDays - r.leaveDays)}</td>
+                                <td className="py-2.5 pl-4 text-right font-semibold">{Math.round(Math.max(0, r.workingDays - r.leaveDays) * 100) / 100}</td>
                               </tr>
                             ))}
                           </tbody>

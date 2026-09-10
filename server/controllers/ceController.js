@@ -115,8 +115,9 @@ async function upsert(req, res) {
   if (!isFinite(m) || m < 1 || m > 12) return badRequest(res, 'Month must be 1–12');
   if (!isFinite(y) || y < 2000) return badRequest(res, 'Year must be 2000 or later');
   const leave = Number(leaveDays);
-  if (!Number.isInteger(leave) || leave < 0)
-    return badRequest(res, 'Leave days must be a whole number of 0 or more');
+  // Half-days are allowed, so leave days may be fractional (e.g. 1.5).
+  if (!Number.isFinite(leave) || leave < 0)
+    return badRequest(res, 'Leave days must be a number of 0 or more');
 
   const now = new Date();
   if (y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth() + 1)) {
