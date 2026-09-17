@@ -506,7 +506,6 @@ export default function Students() {
                   type="number"
                   required
                   min={1}
-                  max={31}
                   step={1}
                   placeholder="Days"
                   value={wdForm.workingDays}

@@ -240,7 +240,9 @@ async function setBatchWorkingDays(req, res) {
   const m = Number(month), y = Number(year), wd = Number(workingDays);
   if (!Number.isInteger(m) || m < 1 || m > 12) return badRequest(res, 'Month must be 1–12');
   if (!Number.isInteger(y) || y < 2000) return badRequest(res, 'Year must be 2000 or later');
-  if (!Number.isInteger(wd) || wd < 1 || wd > 31) return badRequest(res, 'Working days must be between 1 and 31');
+  // No calendar-based ceiling — a batch's working days aren't necessarily bounded
+  // by the month's day count, so only require a positive whole number.
+  if (!Number.isInteger(wd) || wd < 1) return badRequest(res, 'Working days must be a whole number of 1 or more');
 
   const now = new Date();
   if (y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth() + 1)) {
