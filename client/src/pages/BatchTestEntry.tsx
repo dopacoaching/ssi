@@ -8,7 +8,10 @@ import { useStudents, Student } from '../hooks/useStudents';
 import { useBatchTests, BulkEntry } from '../hooks/useTests';
 import Layout from '../components/Layout';
 
-const SUBJECTS = ['Physics', 'Chemistry', 'Math', 'Biology', 'Language 1', 'Language 2', 'Psychology', 'Computer Science'];
+// 'Math' is the base/canonical subject name (used for Monthly entry and CE
+// matching); Weekly entry shows the full word "Mathematics" instead — see the
+// isWeekly effect below that keeps `subject` in sync when the toggle flips.
+const SUBJECTS_BASE = ['Physics', 'Chemistry', 'Math', 'Biology', 'Language 1', 'Language 2', 'Psychology', 'Computer Science'];
 const inputCls = 'border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400';
 
 export default function BatchTestEntry() {
@@ -45,6 +48,16 @@ export default function BatchTestEntry() {
   useEffect(() => {
     if (testType === 'MCQ') setChapter('');
   }, [testType]);
+
+  // Keep the Subject selection valid across the Weekly/Monthly toggle: 'Math'
+  // (Monthly's label) and 'Mathematics' (Weekly's label) are the same subject,
+  // just displayed differently — remap rather than resetting the selection.
+  const subjectOptions = isWeekly
+    ? SUBJECTS_BASE.map(s => (s === 'Math' ? 'Mathematics' : s))
+    : SUBJECTS_BASE;
+  useEffect(() => {
+    setSubject((s) => (s === 'Math' ? 'Mathematics' : s === 'Mathematics' ? 'Math' : s));
+  }, [isWeekly]);
 
   async function handleLoadStudents() {
     if (!batchId) return;
@@ -150,7 +163,7 @@ export default function BatchTestEntry() {
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">Subject</label>
                   <select value={subject} onChange={e => setSubject(e.target.value)} className={inputCls}>
-                    {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                    {subjectOptions.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
               )}
