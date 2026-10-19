@@ -936,7 +936,7 @@ export default function StudentDetail() {
                   <select required value={wForm.subject} onChange={(e) => setWForm({ ...wForm, subject: e.target.value })} className={inputCls}>
                     <option value="Physics">Physics</option>
                     <option value="Chemistry">Chemistry</option>
-                    <option value="Math">Math</option>
+                    <option value="Mathematics">Mathematics</option>
                     <option value="Biology">Biology</option>
                     <option value="Language 1">Language 1</option>
                     <option value="Language 2">Language 2</option>

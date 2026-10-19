@@ -55,7 +55,8 @@ async function aggregateTestMarks(studentId, month, year) {
       switch (t.subject.toLowerCase()) {
         case 'physics':           physicsMarks += t.marks; physicsMax += t.maxMarks; break;
         case 'chemistry':         chemMarks    += t.marks; chemMax    += t.maxMarks; break;
-        case 'math':              mathMarks    += t.marks; mathMax    += t.maxMarks; break;
+        case 'math':
+        case 'mathematics':       mathMarks    += t.marks; mathMax    += t.maxMarks; break;
         case 'biology':           bioMarks     += t.marks; bioMax     += t.maxMarks; break;
         case 'language 1':        lang1Marks   += t.marks; lang1Max   += t.maxMarks; break;
         case 'language 2':        lang2Marks   += t.marks; lang2Max   += t.maxMarks; break;
