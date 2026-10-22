@@ -45,19 +45,29 @@ export default function BatchTestEntry() {
     setStudentsLoaded(false);
   }, [batchId, isWeekly, testType, subject, weekDate, month, year]);
 
+  // Monthly tests have no Chapter field and are always pooled as "General MCQ"
+  // when MCQ — Weekly MCQ gets a real Subject + Chapter, same as Theory.
+  const mcqMonthlyOnly = testType === 'MCQ' && !isWeekly;
+
   useEffect(() => {
-    if (testType === 'MCQ') setChapter('');
-  }, [testType]);
+    if (mcqMonthlyOnly) setChapter('');
+  }, [mcqMonthlyOnly]);
 
   // Keep the Subject selection valid across the Weekly/Monthly toggle: 'Math'
   // (Monthly's label) and 'Mathematics' (Weekly's label) are the same subject,
   // just displayed differently — remap rather than resetting the selection.
-  const subjectOptions = isWeekly
+  // "General MCQ" is offered alongside real subjects whenever MCQ is picked.
+  const subjectOptions = (isWeekly
     ? SUBJECTS_BASE.map(s => (s === 'Math' ? 'Mathematics' : s))
-    : SUBJECTS_BASE;
+    : SUBJECTS_BASE
+  ).concat(testType === 'MCQ' ? ['General MCQ'] : []);
   useEffect(() => {
     setSubject((s) => (s === 'Math' ? 'Mathematics' : s === 'Mathematics' ? 'Math' : s));
   }, [isWeekly]);
+  useEffect(() => {
+    // "General MCQ" only exists in the subject list while MCQ is selected.
+    if (testType !== 'MCQ') setSubject((s) => (s === 'General MCQ' ? 'Physics' : s));
+  }, [testType]);
 
   async function handleLoadStudents() {
     if (!batchId) return;
@@ -95,7 +105,7 @@ export default function BatchTestEntry() {
       const result = await bulkAdd(batchId, {
         isWeekly,
         testType,
-        subject: testType === 'MCQ' ? 'General MCQ' : subject,
+        subject: mcqMonthlyOnly ? 'General MCQ' : subject,
         maxMarks: Number(maxMarks),
         chapter: chapter || undefined,
         weekDate: isWeekly ? weekDate : undefined,
@@ -158,8 +168,8 @@ export default function BatchTestEntry() {
                 </select>
               </div>
 
-              {/* Subject — hidden for MCQ */}
-              {testType !== 'MCQ' && (
+              {/* Subject — hidden only for Monthly MCQ (always pooled as General MCQ) */}
+              {!mcqMonthlyOnly && (
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">Subject</label>
                   <select value={subject} onChange={e => setSubject(e.target.value)} className={inputCls}>
@@ -197,8 +207,8 @@ export default function BatchTestEntry() {
                   onChange={e => setMaxMarks(e.target.value)} className={inputCls} placeholder="e.g. 100" />
               </div>
 
-              {/* Chapter (theory only) */}
-              {testType !== 'MCQ' && (
+              {/* Chapter — not available for Monthly tests (no such field) */}
+              {!mcqMonthlyOnly && (
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">Chapter (optional)</label>
                   <input type="text" value={chapter} onChange={e => setChapter(e.target.value)}
