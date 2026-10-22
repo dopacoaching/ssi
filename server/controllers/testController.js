@@ -171,9 +171,9 @@ async function listWeekly(req, res) {
 }
 
 const VALID_TEST_TYPES   = new Set(['Theory', 'MCQ']);
-// 'mathematics' accepted alongside 'math' — the per-student Weekly Test form
-// now submits the full word; both bucket into the same CE math totals (see
-// syncCEForMonth below). Monthly/bulk entry still send 'math'.
+// 'mathematics' accepted alongside 'math' — Weekly entry (both the per-student
+// form and Batch Test Entry) submits the full word; both bucket into the same
+// CE math totals (see syncCEForMonth below). Monthly entry still sends 'math'.
 const VALID_SUBJECTS     = new Set(['physics', 'chemistry', 'math', 'mathematics', 'biology', 'language 1', 'language 2', 'psychology', 'computer science']);
 
 async function addWeekly(req, res) {
