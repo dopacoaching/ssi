@@ -6,6 +6,8 @@ export interface Batch {
   name: string;
   year: number;
   isActive: boolean;
+  campusId: string | null;
+  campus: { id: string; name: string; code: string } | null;
   _count?: { students: number };
 }
 
@@ -21,12 +23,12 @@ export function useBatches() {
     } finally { setLoading(false); }
   }, []);
 
-  const create = useCallback(async (name: string, year: number) => {
-    const { data } = await api.post('/admin/batches', { name, year });
+  const create = useCallback(async (name: string, year: number, campusId: string) => {
+    const { data } = await api.post('/admin/batches', { name, year, campusId });
     return data.data as Batch;
   }, []);
 
-  const update = useCallback(async (id: string, payload: { name?: string; year?: number }) => {
+  const update = useCallback(async (id: string, payload: { name?: string; year?: number; campusId?: string }) => {
     const { data } = await api.patch(`/admin/batches/${id}`, payload);
     return data.data as Batch;
   }, []);

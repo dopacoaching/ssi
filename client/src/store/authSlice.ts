@@ -3,8 +3,9 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 interface AuthUser {
   id: string;
   name: string;
-  role: 'ADMIN' | 'TEACHER' | 'STUDENT';
+  role: 'ADMIN' | 'TEACHER' | 'STUDENT' | 'LIBRARIAN';
   batchIds: string[];
+  libraryCampusId: string | null;
 }
 
 interface AuthState {

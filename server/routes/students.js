@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { verifyToken, requireRole } = require('../middleware/auth');
 const ctrl = require('../controllers/studentController');
+const clearanceCtrl = require('../controllers/clearanceController');
 const batchCtrl = require('../controllers/batchController');
 const asyncHandler = require('../middleware/asyncHandler');
 const upload = require('../middleware/upload');
@@ -10,9 +11,10 @@ router.get('/batches/:batchId/students', verifyToken, asyncHandler(ctrl.listByBa
 router.get('/batches/:batchId/report',   verifyToken, asyncHandler(ctrl.batchReport));
 router.post('/students',                 verifyToken, requireRole('TEACHER'), asyncHandler(ctrl.create));
 router.get('/students/search',           verifyToken, asyncHandler(ctrl.search));
+router.get('/students/:id/library-dues', verifyToken, requireRole('ADMIN', 'TEACHER'), asyncHandler(clearanceCtrl.studentDues));
 router.get('/students/:id',              verifyToken, asyncHandler(ctrl.getOne));
 router.patch('/students/:id',            verifyToken, requireRole('TEACHER'), asyncHandler(ctrl.update));
 router.patch('/students/:id/photo',      verifyToken, requireRole('ADMIN', 'TEACHER'), upload.single('photo'), asyncHandler(ctrl.updatePhoto));
-router.delete('/students/:id',           verifyToken, requireRole('TEACHER'), asyncHandler(ctrl.remove));
+router.delete('/students/:id',           verifyToken, requireRole('ADMIN', 'TEACHER'), asyncHandler(ctrl.remove));
 
 module.exports = router;

@@ -10,7 +10,7 @@ import { useRemarks } from '../hooks/useRemarks';
 import Layout from '../components/Layout';
 import CEForm from './CEForm';
 import StudentPortal from './StudentPortal';
-import ConfirmModal from '../components/ConfirmModal';
+import DeactivateStudentModal from '../components/DeactivateStudentModal';
 import EmptyState from '../components/EmptyState';
 const loadExportUtils = () => import('../utils/exportUtils');
 import MonthMultiSelect from '../components/MonthMultiSelect';
@@ -452,10 +452,10 @@ export default function StudentDetail() {
                   </div>
                 </div>
 
-                {isTeacher && (
+                {isStaff && (
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={() => openEditStudent(student)}
-                      className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium px-2 py-1">Edit</button>
+                    {isTeacher && <button onClick={() => openEditStudent(student)}
+                      className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium px-2 py-1">Edit</button>}
                     <button onClick={() => setConfirmDeactivate(true)}
                       className="text-sm text-gray-400 hover:text-red-600 dark:hover:text-red-400 px-2 py-1">Deactivate</button>
                   </div>
@@ -467,12 +467,10 @@ export default function StudentDetail() {
           <div className="h-24 bg-gray-100 dark:bg-gray-700 rounded-2xl mb-5 animate-pulse" />
         )}
 
-        <ConfirmModal
+        <DeactivateStudentModal
           open={confirmDeactivate}
-          title="Deactivate Student"
-          message={`${student?.fullName ?? 'This student'} will be removed from the system. All records are preserved.`}
-          confirmLabel="Deactivate"
-          danger
+          studentId={id || ''}
+          studentName={student?.fullName ?? 'This student'}
           loading={deactivating}
           onConfirm={handleDeactivate}
           onCancel={() => setConfirmDeactivate(false)}

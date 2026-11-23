@@ -2,7 +2,7 @@ const { AuditLog, normalize, containsInsensitive } = require('../models/schemas'
 const { ok, badRequest } = require('../views/response');
 
 const VALID_ACTIONS  = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'ERROR', 'FAILED_LOGIN'];
-const VALID_ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval', 'User', 'Auth', 'System'];
+const VALID_ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval', 'User', 'Auth', 'System', 'Campus', 'LibrarySettings', 'Book', 'BookCopy', 'Loan', 'Charge', 'Payment', 'Waiver', 'FinePeriod', 'StockCheck'];
 
 async function list(req, res) {
   const { page = '1', limit = '50', action, entity, search, from, to } = req.query;

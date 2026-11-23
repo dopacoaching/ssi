@@ -3,7 +3,7 @@ import api from '../utils/api';
 
 export interface Teacher {
   id: string; email: string; name: string;
-  role: 'ADMIN' | 'TEACHER'; batchIds: string[]; isActive?: boolean;
+  role: 'ADMIN' | 'TEACHER' | 'LIBRARIAN'; batchIds: string[]; isActive?: boolean;
 }
 
 export interface BatchAnalytics {

@@ -23,7 +23,8 @@ function signTokens(u) {
     id: u.id, 
     role: u.role || 'STUDENT', 
     name: u.name || u.fullName, 
-    batchIds: u.batchIds || (u.batchId ? [u.batchId] : [])
+    batchIds: u.batchIds || (u.batchId ? [u.batchId] : []),
+    libraryCampusId: u.libraryCampusId || null,
   };
   const accessToken  = jwt.sign(payload, process.env.JWT_SECRET,         { expiresIn: '15m' });
   const refreshToken = jwt.sign({ id: u.id, isStudent: !u.role || u.role === 'STUDENT' }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
@@ -84,7 +85,8 @@ async function login(req, res) {
     id: account.id, 
     name: account.name || account.fullName, 
     role: account.role || 'STUDENT', 
-    batchIds: account.batchIds || (account.batchId ? [account.batchId] : []) 
+    batchIds: account.batchIds || (account.batchId ? [account.batchId] : []),
+    libraryCampusId: account.libraryCampusId || null,
   });
 }
 
@@ -117,7 +119,8 @@ async function refresh(req, res) {
     id: account.id, 
     name: account.name || account.fullName, 
     role: account.role || 'STUDENT', 
-    batchIds: account.batchIds || (account.batchId ? [account.batchId] : []) 
+    batchIds: account.batchIds || (account.batchId ? [account.batchId] : []),
+    libraryCampusId: account.libraryCampusId || null,
   });
 }
 

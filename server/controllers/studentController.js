@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const studentModel = require('../models/studentModel');
 const { logAudit } = require('../utils/audit');
+const clearance = require('../services/clearanceService');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
 
 async function listByBatch(req, res) {
@@ -83,6 +84,8 @@ async function update(req, res) {
   return ok(res, updated);
 }
 
+const describeDuesFor = clearance.describeDues;
+
 async function remove(req, res) {
   const student = await studentModel.findById(req.params.id);
   if (!student || !student.isActive) return notFound(res, 'Student not found');
@@ -90,7 +93,13 @@ async function remove(req, res) {
     return forbidden(res);
   }
   await studentModel.softDelete(req.params.id);
-  logAudit(req, 'DELETE', 'Student', student.id, `Deactivated student ${student.fullName} (${student.regNumber})`);
+  // Best effort: a failure to compute library dues never blocks deactivation.
+  let duesNote = '';
+  try {
+    const d = describeDuesFor(await clearance.duesFor(student.id));
+    if (d) duesNote = ` — library dues pending: ${d}`;
+  } catch (err) { console.error('[students] library dues lookup', err.message); }
+  await logAudit(req, 'DELETE', 'Student', student.id, `Deactivated student ${student.fullName} (${student.regNumber})${duesNote}`);
   return ok(res, null, 'Student deactivated');
 }
 

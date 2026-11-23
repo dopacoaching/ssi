@@ -61,7 +61,7 @@ const C = {
 
 // ── Excel Styling Helpers ─────────────────────────────────────────────────────
 
-function headerStyle(center = true): XLSX.CellStyle {
+export function headerStyle(center = true): XLSX.CellStyle {
   return {
     font:      { bold: true, color: { rgb: C.WHITE }, sz: 10, name: 'Calibri' },
     fill:      { fgColor: { rgb: C.SLATE_900 }, patternType: 'solid' },
@@ -70,7 +70,7 @@ function headerStyle(center = true): XLSX.CellStyle {
   };
 }
 
-function rowStyle(isEven: boolean, align: 'left' | 'center' | 'right' = 'left', bold = false): XLSX.CellStyle {
+export function rowStyle(isEven: boolean, align: 'left' | 'center' | 'right' = 'left', bold = false): XLSX.CellStyle {
   return {
     font:      { bold, color: { rgb: C.SLATE_800 }, sz: 9.5, name: 'Calibri' },
     fill:      { fgColor: { rgb: isEven ? C.WHITE : C.SLATE_50 }, patternType: 'solid' },

@@ -5,6 +5,10 @@ const UNIQUE_FIELD_MESSAGES = {
   regNumber:          'A student with this registration number already exists',
   email:              'This email address is already registered',
   name:               'A batch with this name already exists',
+  code:               'A campus with this code already exists',
+  campusId_catalogNumber: 'Catalog number already exists — please retry',
+  campusId_receiptNumber: 'Receipt number clash — please retry',
+  copyId: 'This copy is already issued',
   batchId_month_year: 'An approval record for this batch and period already exists',
 };
 
@@ -22,8 +26,20 @@ function classifyError(err) {
 
   // Mongo duplicate-key error
   if (err.code === 11000 || err.code === 11001) {
-    const keys = Object.keys(err.keyPattern || err.keyValue || {});
-    const field = keys.join('_');
+    const pattern = err.keyPattern || err.keyValue || err.writeErrors?.[0]?.err?.keyPattern
+      || err.writeErrors?.[0]?.err?.errInfo?.keyPattern || {};
+    let field = Object.keys(pattern).join('_');
+    // MongoBulkWriteError (insertMany) may carry no keyPattern — fall back to the message text.
+    if (!field && /campusId_catalogNumber/.test(`${err.message || ''} ${err.writeErrors?.[0]?.err?.errmsg || ''}`)) {
+      field = 'campusId_catalogNumber';
+    }
+    if (!field && /campusId_receiptNumber/.test(`${err.message || ''} ${err.writeErrors?.[0]?.err?.errmsg || ''}`)) {
+      field = 'campusId_receiptNumber';
+    }
+    // 'name' is unique on both Batch and Campus — tell them apart by collection.
+    if (field === 'name' && /\.Campus index/.test(err.message || '')) {
+      return { status: 400, message: 'A campus with this name already exists' };
+    }
     const message = UNIQUE_FIELD_MESSAGES[field] ?? 'This value is already in use';
     return { status: 400, message };
   }

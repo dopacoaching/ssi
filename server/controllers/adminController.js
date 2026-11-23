@@ -1,10 +1,23 @@
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const batchModel = require('../models/batchModel');
 const userModel = require('../models/userModel');
 const studentModel = require('../models/studentModel');
 const { Student, CERecord, BatchApproval, BatchWorkingDays, normalize } = require('../models/schemas');
+const campusModel = require('../models/campusModel');
 const { logAudit } = require('../utils/audit');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
+
+// Resolves a campusId from a request body. Returns { campus } or { error }.
+// `currentCampusId` lets an unchanged (possibly since-deactivated) campus pass.
+async function resolveCampus(campusId, currentCampusId = null) {
+  if (campusId === null || campusId === '' || campusId === undefined) return { error: 'Campus is required' };
+  if (typeof campusId !== 'string' || !mongoose.isValidObjectId(campusId)) return { error: 'Invalid campus' };
+  const campus = await campusModel.findById(campusId);
+  if (!campus) return { error: 'Campus not found' };
+  if (!campus.isActive && String(currentCampusId) !== campus.id) return { error: 'Campus is inactive' };
+  return { campus };
+}
 
 const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -15,19 +28,28 @@ async function listBatches(req, res) {
 }
 
 async function createBatch(req, res) {
-  const { name, year } = req.body;
+  const { name, year, campusId } = req.body;
   if (!name || !year) return badRequest(res, 'Name and year required');
-  const batch = await batchModel.create({ name, year: Number(year) });
-  logAudit(req, 'CREATE', 'Batch', batch.id, `Created batch "${batch.name}" (${batch.year})`);
+  const { campus, error } = await resolveCampus(campusId);
+  if (error) return badRequest(res, error);
+  const batch = await batchModel.create({ name, year: Number(year), campusId: campus.id });
+  logAudit(req, 'CREATE', 'Batch', batch.id, `Created batch "${batch.name}" (${batch.year}) in campus "${campus.name}"`);
   return created(res, batch);
 }
 
 async function updateBatch(req, res) {
   const batch = await batchModel.findById(req.params.id);
   if (!batch) return notFound(res, 'Batch not found');
-  const { name, year } = req.body;
+  const { name, year, campusId } = req.body;
 
   const data = {};
+  let newCampus = null;
+  if (campusId !== undefined) {
+    const r = await resolveCampus(campusId, batch.campusId);
+    if (r.error) return badRequest(res, r.error);
+    newCampus = r.campus;
+    data.campusId = r.campus.id;
+  }
   if (name !== undefined) {
     if (typeof name !== 'string' || !name.trim()) return badRequest(res, 'Batch name cannot be empty');
     data.name = name.trim();
@@ -40,7 +62,10 @@ async function updateBatch(req, res) {
   if (Object.keys(data).length === 0) return badRequest(res, 'No fields to update');
 
   const updated = await batchModel.update(req.params.id, data);
-  logAudit(req, 'UPDATE', 'Batch', updated.id, `Updated batch "${updated.name}"`);
+  const campusNote = newCampus && newCampus.id !== batch.campusId
+    ? `, campus ${batch.campus ? `"${batch.campus.name}"` : 'none'} -> "${newCampus.name}"`
+    : '';
+  logAudit(req, 'UPDATE', 'Batch', updated.id, `Updated batch "${updated.name}"${campusNote}`);
   return ok(res, updated);
 }
 

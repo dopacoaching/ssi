@@ -5,6 +5,8 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const helmet = require('helmet');
 const { connectDB } = require('./utils/db');
+const { verifyToken } = require('./middleware/auth');
+const { blockLibrarian } = require('./middleware/libraryScope');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -22,8 +24,12 @@ if (!allowedOrigin) {
 
 app.use(helmet());
 app.use(cors({ origin: allowedOrigin, credentials: true }));
-app.use(express.json({ limit: '100kb' }));
+// Bulk catalog import carries up to 1000 rows — needs a larger body limit than the default.
+// cookieParser runs first so verifyToken can authenticate BEFORE the large body is read;
+// body-parser then skips bodies already parsed. 4mb stays under Vercel's 4.5MB cap.
 app.use(cookieParser());
+app.use('/api/library/books/bulk', verifyToken, express.json({ limit: '4mb' }));
+app.use(express.json({ limit: '100kb' }));
 
 // Ensure the MongoDB connection is established (and reused) before any route
 // touches the database. On Vercel this runs per cold start; the connection is
@@ -34,6 +40,9 @@ app.use((req, res, next) => {
 
 // API Routes
 app.use('/api/auth',   require('./routes/auth'));
+app.use('/api/library', require('./routes/library'));
+// Library staff may only use /api/auth and /api/library — everything below is off limits.
+app.use('/api',        blockLibrarian);
 app.use('/api',        require('./routes/students'));
 app.use('/api',        require('./routes/ce'));
 app.use('/api',        require('./routes/tests'));

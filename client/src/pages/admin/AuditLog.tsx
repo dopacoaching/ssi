@@ -4,7 +4,7 @@ import Layout from '../../components/Layout';
 import { useAudit, AuditFilters } from '../../hooks/useAudit';
 
 const ACTIONS  = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'ERROR', 'FAILED_LOGIN'];
-const ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval', 'User', 'Auth', 'System'];
+const ENTITIES = ['Student', 'WeeklyTest', 'MonthlyTest', 'CERecord', 'Batch', 'Teacher', 'Remark', 'BatchApproval', 'User', 'Auth', 'System', 'Campus', 'LibrarySettings', 'Book', 'BookCopy', 'Loan', 'Charge', 'Payment', 'Waiver', 'FinePeriod', 'StockCheck'];
 const PAGE_SIZE = 50;
 
 const inputCls = 'border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400';

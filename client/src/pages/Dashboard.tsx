@@ -15,12 +15,17 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState<AlertStudent[]>([]);
 
   useEffect(() => {
+    if (user?.role === 'LIBRARIAN') return;
     fetch().catch(() => toast.error('Failed to load batches'));
     if (user?.role === 'ADMIN') fetchTeachers().catch(() => {});
     if (user?.role === 'ADMIN' || user?.role === 'TEACHER') {
       fetchAlerts().then(setAlerts).catch(() => {});
     }
   }, [fetch, fetchTeachers, fetchAlerts, user?.role]);
+
+  if (user?.role === 'LIBRARIAN') {
+    return <Navigate to="/library" replace />;
+  }
 
   if (user && (user.role as string) === 'STUDENT') {
     return <Navigate to={`/students/${user.id}`} replace />;
