@@ -88,9 +88,13 @@ async function updateStaff(req, res) {
     campus = r.campus;
   }
 
+  // A LIBRARIAN -> TEACHER change drops library access unless the request explicitly grants it
+  // (teacher library access is always an explicit admin decision).
+  const demotedLibrarian = existing.role === 'LIBRARIAN' && newRole !== 'LIBRARIAN';
   const resultingCampusId = libraryCampusId === undefined
-    ? (existing.libraryCampusId || null)
+    ? (demotedLibrarian ? null : (existing.libraryCampusId || null))
     : (clearCampus ? null : campus.id);
+  const campusChanged = resultingCampusId !== (existing.libraryCampusId || null);
 
   if (newRole === 'LIBRARIAN') {
     if (batchIds !== undefined && batchIds.length > 0) return badRequest(res, 'Library staff cannot be assigned to batches');
@@ -102,7 +106,7 @@ async function updateStaff(req, res) {
   if (role !== undefined)  data.role = role;
   if (isActive !== undefined) data.isActive = isActive;
   if (password)            data.password = await bcrypt.hash(password, 12);
-  if (libraryCampusId !== undefined) data.libraryCampusId = resultingCampusId;
+  if (libraryCampusId !== undefined || campusChanged) data.libraryCampusId = resultingCampusId;
   if (newRole === 'LIBRARIAN') {
     if (batchIds !== undefined || existing.role !== 'LIBRARIAN' || (existing.batchIds || []).length > 0) data.batchIds = [];
   } else if (batchIds !== undefined) {
@@ -117,7 +121,7 @@ async function updateStaff(req, res) {
   if (data.role !== undefined && data.role !== existing.role) changes.push(`role ${existing.role} -> ${data.role}`);
   if (batchIds !== undefined && newRole !== 'LIBRARIAN') changes.push('batches updated');
   if (data.batchIds && newRole === 'LIBRARIAN' && (existing.batchIds || []).length > 0) changes.push('batches cleared');
-  if (libraryCampusId !== undefined && resultingCampusId !== (existing.libraryCampusId || null)) {
+  if (campusChanged) {
     changes.push(resultingCampusId ? `library campus -> "${campus.name}"` : 'library access removed');
   }
   if (isActive !== undefined && isActive !== existing.isActive) changes.push(isActive ? 'reactivated' : 'deactivated');

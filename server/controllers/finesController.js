@@ -71,7 +71,16 @@ async function pending(req, res) {
   const term = (q || '').trim().slice(0, 100);
   if (term) {
     const rx = containsInsensitive(term);
-    const found = await Student.find({ $or: [{ regNumber: rx }, { fullName: rx }] }).select('_id').limit(1000).lean();
+    // Search only among students who can appear in this list (open charge or open loan in scope),
+    // so a broad term never truncates the result and totals stay exact.
+    const [withCharges, withLoans] = await Promise.all([
+      Charge.distinct('studentId', { ...s.scope, status: { $in: finePending.OPEN_STATUSES } }),
+      Loan.distinct('studentId', { ...s.scope, status: 'OPEN' }),
+    ]);
+    const candidates = [...new Map([...withCharges, ...withLoans].map((id) => [String(id), id])).values()];
+    const found = candidates.length === 0 ? [] : await Student.find({
+      _id: { $in: candidates }, $or: [{ regNumber: rx }, { fullName: rx }],
+    }).select('_id').lean();
     if (found.length === 0) return ok(res, { items: [], total: 0, page, limit, totals: { balance: 0, accruing: 0 } });
     studentFilter = { studentId: { $in: found.map((f) => f._id) } };
   }
@@ -337,7 +346,12 @@ async function requestWaiver(req, res) {
   const label = await chargeLabel(charge);
   await logAudit(req, 'CREATE', 'Waiver', String(waiver._id), isAdmin
     ? `Waived ${rupee(amount.value)} (direct) on ${label} — reason: ${reason.value}`
+      + (waiver.closedRequests?.length ? ` (closed ${waiver.closedRequests.length} pending request${waiver.closedRequests.length === 1 ? '' : 's'})` : '')
     : `Requested waiver ${rupee(amount.value)} on ${label} — reason: ${reason.value}`);
+  for (const c of waiver.closedRequests || []) {
+    await logAudit(req, 'UPDATE', 'Waiver', c.id,
+      `Closed waiver request ${rupee(c.amount)} on ${label} — charge fully waived by direct waiver ${waiver._id}`);
+  }
   try {
     const [view] = await waiverModel.shapeMany([waiver]);
     return created(res, view);
@@ -405,6 +419,23 @@ async function approveWaiver(req, res) {
   // ---- committed: from here on NEVER return an error ----
   const charge = await chargeModel.findById(l.waiver.chargeId).catch(() => null);
   const label = charge ? await chargeLabel(charge) : 'charge';
+  if (out.closed) {
+    // The approve did NOT happen: the request was closed instead. 409 (not 2xx) so no API
+    // consumer mistakes this for an approval; the closed waiver is still returned in `data`.
+    await logAudit(req, 'UPDATE', 'Waiver', String(l.waiver._id),
+      `Closed waiver request ${rupee(out.requested)} on ${label} — approve attempted but nothing left to waive (charge already settled)`
+      + (amount !== undefined ? `; requested approval amount ${rupee(amount)}` : '')
+      + (note.value ? `; approver note discarded: ${note.value}` : ''));
+    const msg = 'Nothing left to waive — the charge is already settled, so the request was closed instead of approved';
+    let view;
+    try {
+      [view] = await waiverModel.shapeMany([out.waiver]);
+    } catch (err) {
+      console.error('[fines] post-close response build', err);
+      view = { id: String(l.waiver._id), status: 'REJECTED', approvedAmount: null };
+    }
+    return res.status(409).json({ success: false, code: 'WAIVER_CLOSED_SETTLED', message: msg, data: view });
+  }
   await logAudit(req, 'UPDATE', 'Waiver', String(l.waiver._id),
     `Approved waiver ${rupee(out.applied)} on ${label}`
     + (out.applied !== out.requested ? ` (requested ${rupee(out.requested)})` : '')

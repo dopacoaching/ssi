@@ -79,7 +79,7 @@ export default function BulkUpload() {
       fetchMe().catch(() => {});
     } catch (err: any) {
       const data = err.response?.data?.data as BulkValidation | undefined;
-      if (data?.rows) setValidation(data);
+      if (data?.rows) setValidation({ ...data, message: err.response?.data?.message });
       toast.error(errMsg(err, 'Import failed'));
     } finally { setImporting(false); }
   }
@@ -150,6 +150,9 @@ export default function BulkUpload() {
                   {validation.newShelves.length > 0 && (
                     <p className="text-xs text-gray-600 dark:text-gray-300 mt-1"><span className="font-medium">New shelves:</span> {validation.newShelves.join(', ')}</p>
                   )}
+                  {(validation.warnings || []).map((w, i) => (
+                    <p key={i} className="text-xs text-amber-700 dark:text-amber-300 mt-3">{w}</p>
+                  ))}
                   {!validation.valid && errorCount === 0 && validation.message && (
                     <p className="text-xs text-red-600 dark:text-red-400 mt-3">{validation.message}</p>
                   )}
@@ -184,6 +187,11 @@ export default function BulkUpload() {
                             {hasErr && (
                               <ul className="mt-1 text-xs text-red-600 dark:text-red-400 list-disc pl-4">
                                 {vr.errors.map((er, i) => <li key={i}>{er}</li>)}
+                              </ul>
+                            )}
+                            {(vr.warnings || []).length > 0 && (
+                              <ul className="mt-1 text-xs text-amber-700 dark:text-amber-300 list-disc pl-4">
+                                {(vr.warnings || []).map((w, i) => <li key={i}>{w}</li>)}
                               </ul>
                             )}
                             {vr.duplicateInFile.length > 0 && (

@@ -44,7 +44,13 @@ async function createPayment({ campus, studentId, allocations, total, note, user
   const existingFor = async (session) => {
     const ex = await Payment.findOne({ campusId, requestId }).session(session || null).lean();
     if (!ex) return null;
-    if (String(ex.studentId) !== String(student)) throw new CirculationError('This request id was already used for another payment');
+    // A genuine retry carries the same student, total and allocations; anything else reusing the
+    // id is a different payment and must not be answered with the old receipt.
+    const sig = (list) => list.map((a) => `${String(a.chargeId)}:${fine.round2(a.amount)}`).sort().join('|');
+    const same = String(ex.studentId) === String(student)
+      && Math.abs(fine.round2(ex.amount) - fine.round2(total)) < chargeModel.MONEY_TOLERANCE
+      && sig(ex.allocations || []) === sig(allocations);
+    if (!same) throw new CirculationError('This request id was already used for a different payment — please refresh and try again');
     return ex;
   };
   const run = () => withSession((session) => session.withTransaction(async () => {

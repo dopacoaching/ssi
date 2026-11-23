@@ -20,6 +20,9 @@ async function evaluate(req, res) {
   if (!found) { notFound(res, 'No student with this Reg Number'); return null; }
   const now = new Date();
   const ledger = await svc.loadLedger(found.student._id);
+  // Deliberately NOT gated by canStaffSeeStudent: No-Dues is needed for students of any campus
+  // (e.g. a campus-B student with a campus-B loan must still get a definite "not clear" at
+  // campus A). Non-admins see other campuses' items only as a summary (see check()).
   const dues = await clearance.duesFor(found.student._id, { now, ledger });
   const campus = req.library.isAdmin ? null : await campusModel.findById(req.library.campusId);
   return { found, dues, ledger, campus, now };

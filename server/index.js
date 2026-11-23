@@ -6,7 +6,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { connectDB } = require('./utils/db');
 const { verifyToken } = require('./middleware/auth');
-const { blockLibrarian } = require('./middleware/libraryScope');
+const { blockLibrarian, requireLibraryAccess } = require('./middleware/libraryScope');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -24,12 +24,13 @@ if (!allowedOrigin) {
 
 app.use(helmet());
 app.use(cors({ origin: allowedOrigin, credentials: true }));
-// Bulk catalog import carries up to 1000 rows — needs a larger body limit than the default.
-// cookieParser runs first so verifyToken can authenticate BEFORE the large body is read;
-// body-parser then skips bodies already parsed. 4mb stays under Vercel's 4.5MB cap.
 app.use(cookieParser());
-app.use('/api/library/books/bulk', verifyToken, express.json({ limit: '4mb' }));
-app.use(express.json({ limit: '100kb' }));
+// Bulk catalog import carries up to 1000 rows and needs a larger body limit, so the default
+// 100kb parser skips that path; its 4mb parser is mounted below, after the DB connection, so
+// the caller's library access is verified BEFORE the large body is read.
+const BULK_PATH = '/api/library/books/bulk';
+const defaultJson = express.json({ limit: '100kb' });
+app.use((req, res, next) => (req.path.startsWith(BULK_PATH) ? next() : defaultJson(req, res, next)));
 
 // Ensure the MongoDB connection is established (and reused) before any route
 // touches the database. On Vercel this runs per cold start; the connection is
@@ -37,6 +38,9 @@ app.use(express.json({ limit: '100kb' }));
 app.use((req, res, next) => {
   connectDB().then(() => next()).catch(next);
 });
+
+// 4mb stays under Vercel's 4.5MB cap.
+app.use(BULK_PATH, verifyToken, requireLibraryAccess, express.json({ limit: '4mb' }));
 
 // API Routes
 app.use('/api/auth',   require('./routes/auth'));

@@ -11,7 +11,7 @@ const { cleanOptionalText } = require('../utils/fineValidation');
 const { assertCampusAccess, campusFilter } = require('../middleware/libraryScope');
 const { reserve, format } = require('../utils/catalogNumber');
 const {
-  matchKey, cleanText, listCapacityError, canonicalizer, cleanCopies, validateBookFields, validateBulkRows,
+  matchKey, listKey, cleanText, listCapacityError, canonicalizer, cleanCopies, validateBookFields, validateBulkRows,
 } = require('../utils/catalogValidation');
 const { logAudit, logAuditMany, logError } = require('../utils/audit');
 const { ok, created, badRequest, forbidden, notFound } = require('../views/response');
@@ -413,30 +413,60 @@ async function parseResolutions(campusId, rows) {
 
 // Builds the public BulkValidation from the pure result + DB duplicates.
 async function buildValidation(campus, rows, { resolutions } = {}) {
-  const v = validateBulkRows(rows, campus);
+  // Rows that add copies to an existing book don't bring their category into the campus list.
+  // On import the resolutions say which rows those are (exact check). On the earlier validate
+  // step they aren't chosen yet, so rows matching an existing book are given the benefit of
+  // the doubt (lenient pre-check); the import re-validates with the real choices.
+  let v = validateBulkRows(rows, campus);
+  const dupMap = await bookModel.duplicatesByMatchKeys(
+    new ObjectId(campus.id), v.rows.map((r) => r.matchKey).filter(Boolean),
+  );
+  const existingBookRows = new Set();
+  if (resolutions) {
+    resolutions.forEach((res, i) => { if (res?.mode === 'existing') existingBookRows.add(i); });
+  } else {
+    v.rows.forEach((r, i) => { if (r.matchKey && (dupMap.get(r.matchKey) || []).length > 0) existingBookRows.add(i); });
+  }
+  const strict = v; // every row treated as a new book
+  if (existingBookRows.size > 0) v = validateBulkRows(rows, campus, { existingBookRows });
+  // Lenient pre-check: if choosing "new book" for the assumed-existing rows would push the
+  // category list over capacity, warn on exactly those rows so "valid" isn't a surprise later.
+  const rowWarnings = new Map(); // index -> string[]
+  const warnings = [];
+  if (!resolutions && existingBookRows.size > 0 && strict.errors.length > v.errors.length) {
+    const lenientNew = new Set(v.newCategories.map(listKey));
+    const extraNew = new Set(strict.newCategories.map(listKey).filter((k) => !lenientNew.has(k)));
+    existingBookRows.forEach((i) => {
+      const cat = v.rows[i]?.clean?.category;
+      if (cat && extraNew.has(listKey(cat))) {
+        rowWarnings.set(i, [`If added as a new book, category "${cat}" is new and the campus category list would be over capacity — add the copies to the existing book, or the import will fail.`]);
+      }
+    });
+    warnings.push(...strict.errors.filter((e) => !v.errors.includes(e))
+      .map((e) => `Only valid if the flagged rows are added to existing books: ${e}`));
+  }
   if (resolutions) {
     v.rows.forEach((r, i) => {
       const res = resolutions.get(i);
       if (res?.error) r.errors.push(res.error);
     });
   }
-  const dupMap = await bookModel.duplicatesByMatchKeys(
-    new ObjectId(campus.id), v.rows.map((r) => r.matchKey).filter(Boolean),
-  );
   return {
     validation: {
       valid: v.errors.length === 0 && v.rows.every((r) => r.errors.length === 0),
       totalRows: v.totalRows,
       totalCopies: v.totalCopies,
-      rows: v.rows.map((r) => ({
+      rows: v.rows.map((r, i) => ({
         rowNumber: r.rowNumber,
         errors: r.errors,
+        warnings: rowWarnings.get(i) || [],
         duplicates: r.matchKey ? dupMap.get(r.matchKey) || [] : [],
         duplicateInFile: r.duplicateInFile,
       })),
       newCategories: v.newCategories,
       newShelves: v.newShelves,
       errors: v.errors,
+      warnings,
     },
     pure: v,
   };

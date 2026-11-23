@@ -11,6 +11,8 @@ const oid = (v) => new ObjectId(String(v));
 
 const PENDING_EXISTS = 'This charge already has a pending waiver request';
 const DECIDED = 'This request has already been decided';
+const CLOSED_BY_DIRECT = 'Closed automatically: the charge was fully waived directly by an admin';
+const CLOSED_SETTLED = 'Closed automatically: nothing left to waive (charge already settled)';
 
 // Staff REQUEST (PENDING) or admin DIRECT (applied immediately). `charge` is a lean doc the
 // controller already scope-checked. Returns the raw waiver doc.
@@ -48,13 +50,31 @@ async function createWaiver({ charge, amount, reason, userId, isAdmin }) {
     const [doc] = await Waiver.create([{
       ...base, type: 'DIRECT', status: 'APPROVED', approvedAmount: amount, decidedBy: oid(userId), decidedAt: now,
     }], { session });
-    waiver = doc.toObject();
+    // A direct waiver that settles the charge leaves nothing for a pending request to waive:
+    // close it now so it doesn't sit in the queue (and block new requests) forever.
+    // The closed requests are returned so the controller can audit each one individually.
+    const closedRequests = [];
+    if (chargeModel.balanceOf(updated) <= 0) {
+      const pending = await Waiver.find({ chargeId: charge._id, status: 'PENDING' })
+        .select('_id amount').session(session).lean();
+      for (const p of pending) {
+        const r = await Waiver.updateOne(
+          { _id: p._id, status: 'PENDING' },
+          { $set: { status: 'REJECTED', decidedBy: oid(userId), decidedAt: now,
+            decisionNote: `${CLOSED_BY_DIRECT} (waiver ${doc._id})` } },
+          { session },
+        );
+        if (r.modifiedCount) closedRequests.push({ id: String(p._id), amount: p.amount });
+      }
+    }
+    waiver = { ...doc.toObject(), closedRequests };
   }));
   return waiver;
 }
 
 // Approve a PENDING request, optionally for less than requested. Applies min(amount, balance).
-// Throws "Nothing left to waive" (waiver stays PENDING - the transaction aborts) at balance 0.
+// At balance 0 (charge settled by payment / direct waiver meanwhile) the request is closed as
+// REJECTED instead and `{ closed: true, applied: 0 }` is returned.
 async function approveWaiver({ waiverId, amount, note, userId }) {
   let out = null;
   await withSession((session) => session.withTransaction(async () => {
@@ -66,7 +86,16 @@ async function approveWaiver({ waiverId, amount, note, userId }) {
     if (wanted > waiver.amount + chargeModel.MONEY_TOLERANCE) throw new CirculationError('Approved amount cannot exceed the requested amount');
     const charge = await chargeModel.findById(waiver.chargeId, { session });
     const balance = charge ? chargeModel.balanceOf(charge) : 0;
-    if (balance <= 0) throw new CirculationError('Nothing left to waive');
+    if (balance <= 0) {
+      const closed = await Waiver.findOneAndUpdate(
+        { _id: waiver._id, status: 'PENDING' },
+        { $set: { status: 'REJECTED', decidedBy: oid(userId), decidedAt: now, decisionNote: CLOSED_SETTLED } },
+        { new: true, session },
+      ).lean();
+      if (!closed) throw new CirculationError(DECIDED);
+      out = { waiver: closed, applied: 0, requested: waiver.amount, closed: true };
+      return;
+    }
     const apply = fine.round2(Math.min(wanted, balance));
 
     const updatedCharge = await chargeModel.applyDelta({ _id: waiver.chargeId }, { kind: 'waive', amount: apply }, { session });

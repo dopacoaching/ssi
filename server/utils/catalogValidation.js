@@ -143,7 +143,9 @@ function canonicalizer(existingList) {
 // falls back to index+2 when it is not a unique positive integer).
 // Returns per-row { rowNumber, errors, duplicateInFile, clean, matchKey } plus totals, the
 // categories/shelves that would be added, and top-level `errors` (e.g. campus list full).
-function validateBulkRows(rows, existing = {}) {
+// `existingBookRows` (Set of row indexes): rows resolved to an EXISTING book. Their copies keep
+// the book's category, so their category is not collected (or counted against list capacity).
+function validateBulkRows(rows, existing = {}, { existingBookRows = new Set() } = {}) {
   const out = [];
   const byKey = new Map(); // matchKey -> [index]
   const usedNumbers = new Set();
@@ -183,11 +185,12 @@ function validateBulkRows(rows, existing = {}) {
     r.duplicateInFile = byKey.get(r.matchKey).filter((j) => j !== i).map((j) => out[j].rowNumber);
   });
 
-  const collect = (existingList, pick) => {
+  const collect = (existingList, pick, { skipExistingBooks = false } = {}) => {
     const seen = new Set((existingList || []).map(listKey));
     const added = [];
-    for (const r of out) {
+    for (const [i, r] of out.entries()) {
       if (r.errors.length) continue;
+      if (skipExistingBooks && existingBookRows.has(i)) continue;
       const v = pick(r.clean);
       if (!v) continue;
       const k = listKey(v);
@@ -198,7 +201,7 @@ function validateBulkRows(rows, existing = {}) {
     return added;
   };
 
-  const newCategories = collect(existing.categories, (c) => c.category);
+  const newCategories = collect(existing.categories, (c) => c.category, { skipExistingBooks: true });
   const newShelves = collect(existing.shelfLocations, (c) => c.shelfLocation);
   const errors = [
     listCapacityError(existing.categories, newCategories, 'Category'),

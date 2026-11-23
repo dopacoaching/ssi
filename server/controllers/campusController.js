@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const campusModel = require('../models/campusModel');
 const librarySettingsModel = require('../models/librarySettingsModel');
+const { Loan, Charge, StockCheck } = require('../models/schemas');
 const { cleanStringList } = require('../utils/validation');
 const { logAudit } = require('../utils/audit');
 const { ok, created, badRequest, notFound } = require('../views/response');
@@ -65,6 +66,27 @@ async function createCampus(req, res) {
   return created(res, campus);
 }
 
+// Work that would become unreachable for a campus's staff once it is inactive
+// (requireLibraryAccess denies them). Returns human-readable parts; [] when clear.
+async function openCampusWork(campusId) {
+  const campusOid = new mongoose.Types.ObjectId(String(campusId));
+  const [batches, staff, openLoans, openCharges, openChecks] = await Promise.all([
+    campusModel.countActiveBatches(campusId),
+    campusModel.countActiveStaff(campusId),
+    Loan.countDocuments({ campusId: campusOid, status: 'OPEN' }),
+    Charge.countDocuments({ campusId: campusOid, status: { $in: ['UNPAID', 'PARTIAL'] } }),
+    StockCheck.countDocuments({ campusId: campusOid, status: 'OPEN' }),
+  ]);
+  const n = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+  const parts = [];
+  if (batches > 0) parts.push(n(batches, 'active batch', 'active batches'));
+  if (staff > 0) parts.push(n(staff, 'active staff member', 'active staff members'));
+  if (openLoans > 0) parts.push(n(openLoans, 'book still issued', 'books still issued'));
+  if (openCharges > 0) parts.push(n(openCharges, 'unpaid library charge', 'unpaid library charges'));
+  if (openChecks > 0) parts.push(n(openChecks, 'open stock check', 'open stock checks'));
+  return parts;
+}
+
 async function updateCampus(req, res) {
   if (!mongoose.isValidObjectId(req.params.id)) return notFound(res, 'Campus not found');
   const existing = await campusModel.findById(req.params.id);
@@ -95,20 +117,28 @@ async function updateCampus(req, res) {
     if (dupes.length) return badRequest(res, 'A campus with this name already exists');
   }
 
-  if (data.isActive === false && existing.isActive) {
-    const [batches, staff] = await Promise.all([
-      campusModel.countActiveBatches(existing.id),
-      campusModel.countActiveStaff(existing.id),
-    ]);
-    if (batches > 0 || staff > 0) {
-      const parts = [];
-      if (batches > 0) parts.push(`${batches} active batch${batches === 1 ? '' : 'es'}`);
-      if (staff > 0) parts.push(`${staff} active staff member${staff === 1 ? '' : 's'}`);
-      return badRequest(res, `Cannot deactivate campus "${existing.name}": it still has ${parts.join(' and ')}. Reassign or deactivate them first.`);
-    }
+  const deactivating = data.isActive === false && existing.isActive;
+  const blockedMsg = (parts) =>
+    `Cannot deactivate campus "${existing.name}": it still has ${parts.join(', ')}. Resolve them first.`;
+  if (deactivating) {
+    const parts = await openCampusWork(existing.id);
+    if (parts.length) return badRequest(res, blockedMsg(parts));
   }
 
   const updated = await campusModel.update(existing.id, data);
+
+  if (deactivating) {
+    // Close the check-then-update race: once the campus is inactive, requireLibraryAccess
+    // stops new staff requests, so re-check now to catch anything (a loan issued, a charge
+    // raised…) committed between the first check and the update, and roll back if so.
+    const parts = await openCampusWork(existing.id);
+    if (parts.length) {
+      const revert = { isActive: true };
+      for (const k of Object.keys(data)) if (k !== 'isActive') revert[k] = existing[k] === undefined ? '' : existing[k];
+      await campusModel.update(existing.id, revert);
+      return badRequest(res, blockedMsg(parts));
+    }
+  }
 
   const changes = [];
   if (data.name !== undefined && data.name !== existing.name) changes.push(`name "${existing.name}" -> "${data.name}"`);

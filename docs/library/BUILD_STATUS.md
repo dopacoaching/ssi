@@ -11,7 +11,7 @@ PRD: `docs/DOPA_Library_System_PRD.pdf`. API contracts per phase: `docs/library/
 | 4 Fines & payments (payments/receipts, void, waivers, no-fine periods, daily cash summary) | Built + reviewed + fixed. Uncommitted. |
 | 5 Lost/damaged, No-Dues + deactivation warning, dashboard widgets, reports (Excel/PDF), stock check | Built + reviewed + fixed. Uncommitted. Contract: `phase5-contract.md`. |
 
-No feature has been exercised against a database or in a browser yet. Verified only: server modules load, pure-function tests (`node --test "tests/*.test.js"` from server/, 6/6), client `tsc -b` + `vite build`.
+**2026-11-23:** end-to-end API test (144 checks, all roles, both campuses, phases 1–5 incl. the second code-review fixes) passed against a local MongoDB 8 replica set; scripts `library-indexes.js` and `seed-campuses.js` verified idempotent there. Not yet clicked through in a browser. Also: pure-function tests 6/6, client `tsc -b` + `vite build`.
 **Note (2026-11-23):** during Phase 5 verification `scripts/library-indexes.js` was accidentally executed (it runs on `require`) against the DB in `server/.env` (Atlas `ssi`). All 35 library indexes now exist there. Index creation is additive; no documents were changed.
 
 ## Scripts (run from server/, dry-run first)

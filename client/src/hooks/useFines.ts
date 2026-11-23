@@ -127,9 +127,19 @@ export function useFines() {
     return data.data as WaiverListResult;
   }, []);
 
+  // 409 WAIVER_CLOSED_SETTLED: the charge was already settled, so the server closed the request
+  // instead of approving it. Returned as { closed: true } rather than thrown.
   const approveWaiver = useCallback(async (id: string, payload: { amount?: number; note?: string }) => {
-    const { data } = await api.post(`/library/waivers/${id}/approve`, payload);
-    return data.data as WaiverView;
+    try {
+      const { data } = await api.post(`/library/waivers/${id}/approve`, payload);
+      return { waiver: data.data as WaiverView, closed: false, message: data.message as string };
+    } catch (err) {
+      const r = (err as { response?: { status?: number; data?: { code?: string; data?: WaiverView; message?: string } } }).response;
+      if (r?.status === 409 && r.data?.code === 'WAIVER_CLOSED_SETTLED') {
+        return { waiver: r.data.data as WaiverView, closed: true, message: r.data.message || '' };
+      }
+      throw err;
+    }
   }, []);
 
   const rejectWaiver = useCallback(async (id: string, note: string) => {

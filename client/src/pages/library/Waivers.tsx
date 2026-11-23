@@ -154,8 +154,9 @@ export default function Waivers() {
           onClose={() => setApproving(null)}
           onSubmit={async (note) => {
             const n = Math.round(Number(apAmount) * 100) / 100;
-            await approveWaiver(approving.id, { ...(n !== approving.amount ? { amount: n } : {}), ...(note ? { note } : {}) });
-            toast.success('Waiver approved');
+            const result = await approveWaiver(approving.id, { ...(n !== approving.amount ? { amount: n } : {}), ...(note ? { note } : {}) });
+            if (result.closed) toast(result.message || 'Nothing left to waive — the charge is already settled, so the request was closed');
+            else toast.success('Waiver approved');
             setApproving(null); setRetry((x) => x + 1);
           }}
         >

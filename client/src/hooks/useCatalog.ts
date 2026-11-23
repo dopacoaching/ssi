@@ -76,6 +76,7 @@ export interface BulkRow {
 export interface BulkRowResult {
   rowNumber: number;
   errors: string[];
+  warnings?: string[]; // validate step only: valid now, but would fail if imported as a new book
   duplicates: { id: string; title: string; author: string; copyCount: number }[];
   duplicateInFile: number[];
 }
@@ -85,6 +86,7 @@ export interface BulkValidation {
   totalRows: number; totalCopies: number;
   rows: BulkRowResult[];
   newCategories: string[]; newShelves: string[];
+  warnings?: string[];
   message?: string; // top-level server message (client-attached)
 }
 

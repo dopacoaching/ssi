@@ -177,7 +177,12 @@ export default function Staff() {
       <>
         <div>
           <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1.5 font-medium">Role</label>
-          <select value={f.role} onChange={(e) => set({ ...f, role: e.target.value as StaffRole })} className={inputCls}>
+          <select value={f.role} onChange={(e) => {
+            const role = e.target.value as StaffRole;
+            // Switching a librarian to teacher starts with library access OFF; the admin must
+            // tick it explicitly to keep it (matches the server rule).
+            set({ ...f, role, ...(f.role === 'LIBRARIAN' && role === 'TEACHER' ? { libraryAccess: false } : {}) });
+          }} className={inputCls}>
             <option value="TEACHER">Teacher</option>
             <option value="LIBRARIAN">Librarian</option>
           </select>

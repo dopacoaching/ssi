@@ -13,6 +13,7 @@ node_modules/
 # Build outputs
 dist/
 build/
+*.tsbuildinfo
 
 # Debug logs
 npm-debug.log*
